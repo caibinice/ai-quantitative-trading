@@ -7,7 +7,14 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import DailyPrice, FactorScore, FinancialMetric, NewsItem, SentimentAnalysis
+from app.models import (
+    DailyPrice,
+    FactorScore,
+    FinancialMetric,
+    NewsItem,
+    PointInTimeFinancial,
+    SentimentAnalysis,
+)
 from app.schemas import StrategyParameters
 
 
@@ -31,12 +38,15 @@ def momentum_component(closes: list[float]) -> tuple[float, dict[str, float]]:
     }
 
 
-def quality_component(metrics: list[FinancialMetric]) -> tuple[float, dict[str, float]]:
+def quality_component(
+    metrics: list[FinancialMetric | PointInTimeFinancial],
+) -> tuple[float, dict[str, float]]:
     selected: dict[str, float] = {}
-    keywords = ("净资产收益率", "营业总收入", "归母净利润")
+    keywords = ("净资产收益率", "营业总收入", "归母净利润", "净利润")
     for metric in metrics:
         if any(keyword in metric.metric_name for keyword in keywords):
-            value = metric.yoy if metric.yoy is not None else metric.metric_value
+            yoy = metric.yoy if isinstance(metric, FinancialMetric) else None
+            value = yoy if yoy is not None else metric.metric_value
             if value is not None and metric.metric_name not in selected:
                 selected[metric.metric_name] = float(value)
     if not selected:
@@ -83,9 +93,15 @@ def calculate_scores(
 
         financials = list(
             db.scalars(
-                select(FinancialMetric)
-                .where(FinancialMetric.symbol == symbol, FinancialMetric.report_date <= as_of)
-                .order_by(FinancialMetric.report_date.desc())
+                select(PointInTimeFinancial)
+                .where(
+                    PointInTimeFinancial.symbol == symbol,
+                    PointInTimeFinancial.available_at <= as_of,
+                )
+                .order_by(
+                    PointInTimeFinancial.available_at.desc(),
+                    PointInTimeFinancial.report_date.desc(),
+                )
                 .limit(100)
             ).all()
         )
@@ -122,6 +138,7 @@ def calculate_scores(
         item.explanation = {
             "momentum": momentum_detail,
             "quality": quality_detail,
+            "quality_data_mode": "point_in_time",
             "sentiment_event_count": event_count,
             "warning": "评分仅用于研究排序，不代表投资建议。",
         }

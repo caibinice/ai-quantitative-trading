@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, formatNumber, formatPercent } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
-import type { BacktestResult, StrategyConfig, StrategyParameters } from '../types'
+import type { BacktestResult, ResearchTask, StrategyConfig, StrategyParameters } from '../types'
 
 type Action = 'save' | 'sync' | 'analyze' | 'score' | 'backtest' | ''
 
@@ -31,14 +31,14 @@ export function Strategy() {
         const saved = await api<StrategyConfig>('/strategy', { method: 'PUT', body: JSON.stringify({ ...config, watchlist }) })
         setConfig(saved); setMessage('策略配置已保存。')
       } else if (action === 'sync') {
-        const response = await api<Record<string, number>>('/pipeline/sync', { method: 'POST', body: JSON.stringify({ symbols: watchlist, start_date: startDate, end_date: endDate }) })
-        setMessage(`数据同步完成：行情 ${response.prices ?? 0} 条，新闻 ${response.news ?? 0} 条。`)
+        const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'market_sync', payload: { symbols: watchlist, start_date: startDate, end_date: endDate } }) })
+        setMessage(`数据同步任务 #${response.id} 已入队，可在任务中心查看进度。`)
       } else if (action === 'analyze') {
-        const response = await api<{ analyzed: number }>('/pipeline/analyze', { method: 'POST', body: JSON.stringify({ limit: 200 }) })
-        setMessage(`情绪分析完成：处理 ${response.analyzed} 条事件。`)
+        const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'sentiment_analysis', payload: { limit: 200 } }) })
+        setMessage(`情绪分析任务 #${response.id} 已入队。`)
       } else if (action === 'score') {
-        const response = await api<{ count: number }>('/rankings/recompute', { method: 'POST', body: JSON.stringify({ symbols: watchlist }) })
-        setMessage(`因子评分完成：生成 ${response.count} 个标的评分。`)
+        const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'factor_scoring', payload: { symbols: watchlist } }) })
+        setMessage(`点时因子评分任务 #${response.id} 已入队。`)
       } else if (action === 'backtest') {
         const response = await api<BacktestResult>('/backtests', { method: 'POST', body: JSON.stringify({ name: config.name, symbols: watchlist, start_date: startDate, end_date: endDate, parameters: config.parameters }) })
         setResult(response); setMessage('回测完成。信号已强制延迟一个交易日执行。')
@@ -47,19 +47,19 @@ export function Strategy() {
     finally { setActiveAction('') }
   }
 
-  const updateParameter = (key: keyof StrategyParameters, value: number) => {
+  const updateParameter = <K extends keyof StrategyParameters>(key: K, value: StrategyParameters[K]) => {
     if (!config) return
     setConfig({ ...config, parameters: { ...config.parameters, [key]: value } })
   }
   const weightTotal = config ? config.parameters.momentum_weight + config.parameters.quality_weight + config.parameters.sentiment_weight : 0
   const chartOption = useMemo(() => ({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['双因子策略', '等权基准'], textStyle: { color: '#8fa2b7' }, top: 0 },
+    legend: { data: ['双因子策略', '指数基准'], textStyle: { color: '#8fa2b7' }, top: 0 },
     grid: { left: 60, right: 24, top: 48, bottom: 40 },
     xAxis: { type: 'category', boundaryGap: false, data: result?.equity_curve.map((row) => row.date) ?? [], axisLabel: { color: '#718096' }, axisLine: { lineStyle: { color: '#2a3b50' } } },
     yAxis: { type: 'value', scale: true, axisLabel: { color: '#718096' }, splitLine: { lineStyle: { color: '#1a2a3c' } } },
     dataZoom: [{ type: 'inside' }],
-    series: [{ name: '双因子策略', type: 'line', showSymbol: false, smooth: 0.2, data: result?.equity_curve.map((row) => row.equity) ?? [], lineStyle: { width: 2, color: '#37c6e7' }, areaStyle: { color: '#37c6e718' } }, { name: '等权基准', type: 'line', showSymbol: false, data: result?.equity_curve.map((row) => row.benchmark) ?? [], lineStyle: { width: 1.5, color: '#77869c', type: 'dashed' } }],
+    series: [{ name: '双因子策略', type: 'line', showSymbol: false, smooth: 0.2, data: result?.equity_curve.map((row) => row.equity) ?? [], lineStyle: { width: 2, color: '#37c6e7' }, areaStyle: { color: '#37c6e718' } }, { name: '指数基准', type: 'line', showSymbol: false, data: result?.equity_curve.map((row) => row.benchmark) ?? [], lineStyle: { width: 1.5, color: '#a989ff', type: 'dashed' } }],
   }), [result])
 
   if (error && !config) return <ErrorPanel message={error} />
@@ -86,7 +86,7 @@ export function Strategy() {
           </article>
           <article className="panel config-panel">
             <div className="panel-head"><div><span className="section-kicker">EXECUTION</span><h2>信号与成本</h2></div><FlaskConical size={21} /></div>
-            <div className="compact-grid"><NumberField label="动量窗口（交易日）" value={p.momentum_window} step={1} onChange={(value) => updateParameter('momentum_window', value)} /><NumberField label="舆情回看（日）" value={p.sentiment_lookback_days} step={1} onChange={(value) => updateParameter('sentiment_lookback_days', value)} /><NumberField label="持仓数量" value={p.top_n} step={1} onChange={(value) => updateParameter('top_n', value)} /><NumberField label="舆情门槛" value={p.sentiment_threshold} step={0.05} onChange={(value) => updateParameter('sentiment_threshold', value)} /><NumberField label="手续费率" value={p.fee_rate} step={0.0001} onChange={(value) => updateParameter('fee_rate', value)} /><NumberField label="滑点率" value={p.slippage_rate} step={0.0001} onChange={(value) => updateParameter('slippage_rate', value)} /></div>
+            <div className="compact-grid"><NumberField label="动量窗口（交易日）" value={p.momentum_window} step={1} onChange={(value) => updateParameter('momentum_window', value)} /><NumberField label="舆情回看（日）" value={p.sentiment_lookback_days} step={1} onChange={(value) => updateParameter('sentiment_lookback_days', value)} /><NumberField label="持仓数量" value={p.top_n} step={1} onChange={(value) => updateParameter('top_n', value)} /><NumberField label="舆情门槛" value={p.sentiment_threshold} step={0.05} onChange={(value) => updateParameter('sentiment_threshold', value)} /><NumberField label="手续费率" value={p.fee_rate} step={0.0001} onChange={(value) => updateParameter('fee_rate', value)} /><NumberField label="滑点率" value={p.slippage_rate} step={0.0001} onChange={(value) => updateParameter('slippage_rate', value)} /><label className="field"><span>指数基准</span><select value={p.benchmark_symbol ?? '000300'} onChange={(event) => updateParameter('benchmark_symbol', event.target.value)}><option value="000300">000300 · 沪深300</option><option value="000905">000905 · 中证500</option><option value="000852">000852 · 中证1000</option></select></label></div>
           </article>
         </div>
         <aside className="strategy-column">

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from app.services.scoring import momentum_component, sentiment_component
+from app.models import PointInTimeFinancial
+from app.services.scoring import (
+    momentum_component,
+    quality_component,
+    sentiment_component,
+)
 
 
 def test_momentum_rewards_a_stable_uptrend() -> None:
@@ -24,3 +29,19 @@ def test_recent_sentiment_has_more_weight() -> None:
 
     assert count == 2
     assert score > 50
+
+
+def test_quality_accepts_real_profit_growth_metric() -> None:
+    metric = PointInTimeFinancial(
+        symbol="000001",
+        report_date=date(2026, 3, 31),
+        available_at=date(2026, 4, 25),
+        metric_name="净利润同比增长",
+        metric_value=25.0,
+        source="akshare",
+    )
+
+    score, detail = quality_component([metric])
+
+    assert score > 50
+    assert detail == {"净利润同比增长": 25.0}

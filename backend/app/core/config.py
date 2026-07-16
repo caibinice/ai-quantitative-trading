@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     price_sync_cron: str = "20 18 * * 1-5"
     news_sync_cron: str = "0 */2 * * *"
     score_cron: str = "40 19 * * 1-5"
+    infrastructure_cron: str = "10 8 * * 6"
+    data_quality_cron: str = "10 20 * * 1-5"
 
     @model_validator(mode="after")
     def fill_from_credentials(self) -> Settings:

@@ -17,6 +17,7 @@ class StrategyParameters(BaseModel):
     fee_rate: float = Field(default=0.0003, ge=0, le=0.02)
     slippage_rate: float = Field(default=0.0005, ge=0, le=0.02)
     initial_capital: float = Field(default=100_000, gt=0)
+    benchmark_symbol: str = Field(default="000300", min_length=6, max_length=16)
 
     @field_validator("sentiment_weight")
     @classmethod
@@ -77,3 +78,59 @@ class BacktestRequest(BaseModel):
         if start and value <= start:
             raise ValueError("end_date 必须晚于 start_date")
         return value
+
+
+class TaskCreateRequest(BaseModel):
+    task_type: str = Field(min_length=1, max_length=64)
+    payload: dict = Field(default_factory=dict)
+    priority: int = Field(default=100, ge=1, le=1000)
+    max_attempts: int = Field(default=2, ge=1, le=5)
+
+
+class WalkForwardRequest(BaseModel):
+    name: str = "Walk-forward 样本外验证"
+    symbols: list[str] = Field(default_factory=list)
+    start_date: date
+    end_date: date
+    train_days: int = Field(default=126, ge=60, le=1000)
+    test_days: int = Field(default=63, ge=20, le=250)
+    momentum_windows: list[int] = Field(default_factory=lambda: [10, 20, 40])
+    sentiment_thresholds: list[float] = Field(default_factory=lambda: [-0.2, 0.0, 0.2])
+    parameters: StrategyParameters = Field(default_factory=StrategyParameters)
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_walk_forward_dates(cls, value: date, info):
+        start = info.data.get("start_date")
+        if start and value <= start:
+            raise ValueError("end_date 必须晚于 start_date")
+        return value
+
+    @field_validator("momentum_windows")
+    @classmethod
+    def validate_momentum_windows(cls, value: list[int]) -> list[int]:
+        values = sorted(set(value))
+        if not values or any(item < 5 or item > 250 for item in values):
+            raise ValueError("动量窗口必须在 5 到 250 之间")
+        return values
+
+    @field_validator("sentiment_thresholds")
+    @classmethod
+    def validate_sentiment_thresholds(cls, value: list[float]) -> list[float]:
+        values = sorted(set(value))
+        if not values or any(item < -1 or item > 1 for item in values):
+            raise ValueError("舆情阈值必须在 -1 到 1 之间")
+        return values
+
+
+class InfrastructureSyncRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list)
+    benchmark_symbol: str = "000300"
+    start_date: date | None = None
+    end_date: date | None = None
+    report_dates: list[date] = Field(default_factory=list)
+
+
+class DataQualityRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list)
+    benchmark_symbol: str = "000300"

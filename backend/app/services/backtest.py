@@ -9,7 +9,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import BacktestRun, DailyPrice, NewsItem, SentimentAnalysis
+from app.models import BacktestRun, DailyPrice, IndexPrice, NewsItem, SentimentAnalysis
 from app.schemas import BacktestRequest, StrategyParameters
 
 
@@ -30,6 +30,7 @@ def run_dual_factor_backtest(
     price_frames: dict[str, pd.Series],
     sentiment_events: dict[str, list[tuple[pd.Timestamp, float]]],
     parameters: StrategyParameters,
+    benchmark_prices: pd.Series | None = None,
 ) -> dict[str, Any]:
     """Run a close-to-close research backtest with a mandatory one-bar signal delay."""
     if not price_frames:
@@ -72,13 +73,45 @@ def run_dual_factor_backtest(
     costs = turnover * (parameters.fee_rate + parameters.slippage_rate)
     gross_return = (applied_weights * returns).sum(axis=1)
     net_return = gross_return - costs
-    benchmark_return = returns.mean(axis=1)
+    if benchmark_prices is not None and not benchmark_prices.empty:
+        benchmark_close = benchmark_prices.reindex(closes.index).ffill()
+        benchmark_return = benchmark_close.pct_change(fill_method=None).fillna(0.0)
+    else:
+        benchmark_return = returns.mean(axis=1)
 
-    equity = parameters.initial_capital * (1 + net_return).cumprod()
-    benchmark = parameters.initial_capital * (1 + benchmark_return).cumprod()
+    performance = performance_from_returns(
+        net_return,
+        benchmark_return,
+        parameters.initial_capital,
+        turnover,
+    )
+    return {
+        **performance,
+        "weights": applied_weights,
+        "net_returns": net_return,
+        "benchmark_returns": benchmark_return,
+    }
+
+
+def performance_from_returns(
+    net_return: pd.Series,
+    benchmark_return: pd.Series,
+    initial_capital: float,
+    turnover: pd.Series | None = None,
+) -> dict[str, Any]:
+    if net_return.empty:
+        raise ValueError("没有可用于计算绩效的收益序列")
+    benchmark_return = benchmark_return.reindex(net_return.index).fillna(0.0)
+    turnover = (
+        turnover.reindex(net_return.index).fillna(0.0)
+        if turnover is not None
+        else pd.Series(0.0, index=net_return.index)
+    )
+    equity = initial_capital * (1 + net_return).cumprod()
+    benchmark = initial_capital * (1 + benchmark_return).cumprod()
     drawdown = equity / equity.cummax() - 1
     periods = max(1, len(net_return) - 1)
-    total_return = float(equity.iloc[-1] / parameters.initial_capital - 1)
+    total_return = float(equity.iloc[-1] / initial_capital - 1)
     annualized = float((1 + total_return) ** (252 / periods) - 1) if total_return > -1 else -1.0
     std = float(net_return.std(ddof=1))
     sharpe = float(net_return.mean() / std * math.sqrt(252)) if std > 0 else 0.0
@@ -88,7 +121,7 @@ def run_dual_factor_backtest(
         "annualized_return": round(annualized, 6),
         "max_drawdown": round(float(drawdown.min()), 6),
         "sharpe_ratio": round(sharpe, 4),
-        "benchmark_return": round(float(benchmark.iloc[-1] / parameters.initial_capital - 1), 6),
+        "benchmark_return": round(float(benchmark.iloc[-1] / initial_capital - 1), 6),
         "turnover": round(float(turnover.sum()), 4),
         "trade_count": int((turnover > 1e-12).sum()),
         "bars": len(net_return),
@@ -102,7 +135,7 @@ def run_dual_factor_backtest(
         }
         for index in equity.index
     ]
-    return {"metrics": metrics, "equity_curve": curve, "weights": applied_weights}
+    return {"metrics": metrics, "equity_curve": curve}
 
 
 def run_backtest_from_db(db: Session, request: BacktestRequest) -> BacktestRun:
@@ -142,12 +175,35 @@ def run_backtest_from_db(db: Session, request: BacktestRequest) -> BacktestRun:
             (pd.Timestamp(row.published_at).normalize(), float(row.score)) for row in event_rows
         ]
 
-    result = run_dual_factor_backtest(price_frames, sentiment_events, request.parameters)
+    benchmark_rows = db.execute(
+        select(IndexPrice.trade_date, IndexPrice.close)
+        .where(
+            IndexPrice.symbol == request.parameters.benchmark_symbol,
+            IndexPrice.trade_date >= request.start_date,
+            IndexPrice.trade_date <= request.end_date,
+        )
+        .order_by(IndexPrice.trade_date)
+    ).all()
+    benchmark_prices = (
+        pd.Series(
+            [row.close for row in benchmark_rows],
+            index=pd.to_datetime([row.trade_date for row in benchmark_rows]),
+            dtype=float,
+        )
+        if benchmark_rows
+        else None
+    )
+    result = run_dual_factor_backtest(
+        price_frames,
+        sentiment_events,
+        request.parameters,
+        benchmark_prices,
+    )
     run = BacktestRun(
         name=request.name,
         start_date=request.start_date,
         end_date=request.end_date,
-        parameters=request.parameters.model_dump(),
+        parameters={"symbols": symbols, **request.parameters.model_dump()},
         metrics=result["metrics"],
         equity_curve=result["equity_curve"],
     )

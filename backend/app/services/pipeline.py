@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models import JobRun
+from app.models import JobRun, utcnow
 from app.services.provider import AkshareProvider
 from app.services.repository import ensure_stock, upsert_financials, upsert_news, upsert_prices
 
@@ -89,7 +89,7 @@ def sync_market_data(
         job.status = "success" if not totals["errors"] else "partial"
         job.message = "数据同步完成"
         job.details = totals
-        job.finished_at = datetime.utcnow()
+        job.finished_at = utcnow()
         db.add(job)
         db.commit()
         return totals
@@ -97,7 +97,7 @@ def sync_market_data(
         db.rollback()
         job.status = "failed"
         job.message = str(exc)[:1000]
-        job.finished_at = datetime.utcnow()
+        job.finished_at = utcnow()
         db.add(job)
         db.commit()
         raise

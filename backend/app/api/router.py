@@ -25,6 +25,7 @@ from app.schemas import (
     BacktestRequest,
     ScoreRequest,
     StrategyConfigPayload,
+    StrategyParameters,
     SyncRequest,
 )
 from app.services.backtest import run_backtest_from_db
@@ -42,7 +43,7 @@ def _strategy_payload(item: StrategyConfig) -> dict[str, Any]:
         "description": item.description,
         "enabled": item.enabled,
         "watchlist": item.watchlist,
-        "parameters": item.parameters,
+        "parameters": StrategyParameters(**item.parameters).model_dump(),
         "updated_at": item.updated_at,
     }
 

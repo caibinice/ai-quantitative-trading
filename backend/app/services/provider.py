@@ -58,6 +58,130 @@ class AkshareProvider:
             )
         return rows
 
+    def trading_calendar(self) -> list[dict[str, Any]]:
+        df = self._ak().tool_trade_date_hist_sina()
+        return [
+            {
+                "trade_date": _date(record.get("trade_date")),
+                "is_open": True,
+                "source": "akshare-sina",
+            }
+            for record in df.to_dict("records")
+            if record.get("trade_date") is not None
+        ]
+
+    def index_prices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]:
+        ak = self._ak()
+        try:
+            df = ak.index_zh_a_hist(
+                symbol=symbol,
+                period="daily",
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+            )
+            records = [
+                {
+                    "symbol": symbol,
+                    "name": self._index_name(symbol),
+                    "trade_date": _date(record.get("日期")),
+                    "open": _number(record.get("开盘")),
+                    "high": _number(record.get("最高")),
+                    "low": _number(record.get("最低")),
+                    "close": _number(record.get("收盘")),
+                    "volume": _number(record.get("成交量")) or 0,
+                    "amount": _number(record.get("成交额")) or 0,
+                    "source": "akshare-eastmoney",
+                }
+                for record in df.to_dict("records")
+            ]
+        except Exception:
+            market_symbol = self._index_market_symbol(symbol)
+            df = ak.stock_zh_index_daily_tx(
+                symbol=market_symbol,
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+            )
+            records = [
+                {
+                    "symbol": symbol,
+                    "name": self._index_name(symbol),
+                    "trade_date": _date(record.get("date")),
+                    "open": _number(record.get("open")),
+                    "high": _number(record.get("high")),
+                    "low": _number(record.get("low")),
+                    "close": _number(record.get("close")),
+                    "volume": _number(record.get("amount")) or 0,
+                    "amount": 0,
+                    "source": "akshare-tencent",
+                }
+                for record in df.to_dict("records")
+            ]
+        return [
+            row
+            for row in records
+            if row["close"] is not None
+            and row["close"] > 0
+            and row["open"] is not None
+            and row["high"] is not None
+            and row["low"] is not None
+        ]
+
+    def point_in_time_financials(
+        self, report_date: date, symbols: list[str]
+    ) -> list[dict[str, Any]]:
+        df = self._ak().stock_yjbb_em(date=report_date.strftime("%Y%m%d"))
+        wanted = set(symbols)
+        metric_columns = {
+            "每股收益": "每股收益",
+            "营业总收入": "营业总收入-营业总收入",
+            "营业总收入同比增长": "营业总收入-同比增长",
+            "净利润": "净利润-净利润",
+            "净利润同比增长": "净利润-同比增长",
+            "每股净资产": "每股净资产",
+            "净资产收益率": "净资产收益率",
+            "每股经营现金流量": "每股经营现金流量",
+            "销售毛利率": "销售毛利率",
+        }
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            symbol = str(record.get("股票代码", "")).zfill(6)
+            if symbol not in wanted or pd.isna(record.get("最新公告日期")):
+                continue
+            available_at = _date(record.get("最新公告日期"))
+            for metric_name, column in metric_columns.items():
+                value = _number(record.get(column))
+                if value is None:
+                    continue
+                rows.append(
+                    {
+                        "symbol": symbol,
+                        "report_date": report_date,
+                        "available_at": available_at,
+                        "metric_name": metric_name,
+                        "metric_value": value,
+                        "source": "akshare-yjbb",
+                        "is_estimated": False,
+                    }
+                )
+        return rows
+
+    @staticmethod
+    def _index_market_symbol(symbol: str) -> str:
+        return f"{'sz' if symbol.startswith('399') else 'sh'}{symbol}"
+
+    @staticmethod
+    def _index_name(symbol: str) -> str:
+        return {
+            "000300": "沪深300",
+            "000905": "中证500",
+            "000852": "中证1000",
+            "000001": "上证指数",
+            "399001": "深证成指",
+            "399006": "创业板指",
+        }.get(symbol, symbol)
+
     def daily_prices(
         self, symbol: str, start_date: date, end_date: date, adjustment: str = "qfq"
     ) -> list[dict[str, Any]]:

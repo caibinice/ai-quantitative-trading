@@ -3,10 +3,13 @@ import {
   BarChart3,
   BrainCircuit,
   CandlestickChart,
+  CalendarCheck2,
   FlaskConical,
+  ListTodo,
   Menu,
   Newspaper,
   Settings2,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -18,6 +21,9 @@ const navItems = [
   { to: '/rankings', label: 'AI 选股', icon: BrainCircuit },
   { to: '/sentiment', label: '舆情雷达', icon: Newspaper },
   { to: '/strategy', label: '策略实验室', icon: FlaskConical },
+  { to: '/walk-forward', label: '样本外验证', icon: CalendarCheck2 },
+  { to: '/tasks', label: '任务中心', icon: ListTodo },
+  { to: '/data-quality', label: '数据治理', icon: ShieldCheck },
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
