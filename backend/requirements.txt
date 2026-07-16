@@ -1,0 +1,10 @@
+akshare==1.18.64
+APScheduler==3.11.0
+fastapi==0.116.1
+httpx==0.28.1
+numpy==2.3.2
+pandas==2.3.1
+pydantic-settings==2.10.1
+PyMySQL==1.1.1
+SQLAlchemy==2.0.41
+uvicorn[standard]==0.35.0

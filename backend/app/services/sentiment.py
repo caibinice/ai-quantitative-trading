@@ -1,0 +1,151 @@
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass
+from typing import Any
+
+import httpx
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.core.config import Settings, get_settings
+from app.models import NewsItem, SentimentAnalysis
+
+POSITIVE_WORDS = (
+    "增长",
+    "增持",
+    "中标",
+    "盈利",
+    "扭亏",
+    "回购",
+    "突破",
+    "分红",
+    "上调",
+    "签约",
+)
+NEGATIVE_WORDS = (
+    "下滑",
+    "减持",
+    "亏损",
+    "处罚",
+    "调查",
+    "诉讼",
+    "风险",
+    "终止",
+    "下调",
+    "违约",
+)
+
+
+@dataclass
+class SentimentResult:
+    label: str
+    score: float
+    confidence: float
+    summary: str
+    rationale: str
+    model: str
+
+
+def _clamp(value: Any, low: float, high: float) -> float:
+    return max(low, min(high, float(value)))
+
+
+def _extract_json(text: str) -> dict[str, Any]:
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.I | re.S)
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("模型没有返回 JSON 对象")
+    return json.loads(cleaned[start : end + 1])
+
+
+class SentimentAnalyzer:
+    def __init__(self, settings: Settings | None = None):
+        self.settings = settings or get_settings()
+
+    def analyze(self, title: str, content: str, kind: str = "news") -> SentimentResult:
+        if not self.settings.llm_enabled or not self.settings.llm_api_key:
+            return self._heuristic(title, content)
+        try:
+            return self._llm(title, content, kind)
+        except Exception as exc:
+            result = self._heuristic(title, content)
+            result.rationale = f"LLM 调用失败，已回退规则分析：{type(exc).__name__}"
+            return result
+
+    def _llm(self, title: str, content: str, kind: str) -> SentimentResult:
+        prompt = f"""你是一名谨慎的 A 股事件研究助手。请判断下面{kind}对相关上市公司的短期影响。
+只基于给定文本，不补充外部事实，不给出买卖建议。必须返回一个 JSON 对象：
+{{"label":"利好|中性|利空","score":-1到1,"confidence":0到1,
+"summary":"不超过80字","rationale":"不超过120字"}}
+
+标题：{title[:500]}
+正文：{content[:6000]}
+"""
+        url = f"{self.settings.llm_base_url.rstrip('/')}/chat/completions"
+        response = httpx.post(
+            url,
+            headers={"Authorization": f"Bearer {self.settings.llm_api_key}"},
+            json={
+                "model": self.settings.llm_model,
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": "你输出严格 JSON，结论保持克制。"},
+                    {"role": "user", "content": prompt},
+                ],
+            },
+            timeout=self.settings.llm_timeout_seconds,
+        )
+        response.raise_for_status()
+        payload = _extract_json(response.json()["choices"][0]["message"]["content"])
+        score = _clamp(payload.get("score", 0), -1, 1)
+        label = str(payload.get("label", "中性"))
+        if label not in {"利好", "中性", "利空"}:
+            label = "利好" if score > 0.15 else "利空" if score < -0.15 else "中性"
+        return SentimentResult(
+            label=label,
+            score=score,
+            confidence=_clamp(payload.get("confidence", 0.5), 0, 1),
+            summary=str(payload.get("summary", ""))[:500],
+            rationale=str(payload.get("rationale", ""))[:1000],
+            model=self.settings.llm_model,
+        )
+
+    def _heuristic(self, title: str, content: str) -> SentimentResult:
+        text = f"{title} {content}"
+        positive = sum(text.count(word) for word in POSITIVE_WORDS)
+        negative = sum(text.count(word) for word in NEGATIVE_WORDS)
+        raw = positive - negative
+        score = max(-1.0, min(1.0, raw / max(3, positive + negative)))
+        label = "利好" if score > 0.15 else "利空" if score < -0.15 else "中性"
+        return SentimentResult(
+            label=label,
+            score=score,
+            confidence=min(0.75, 0.35 + 0.08 * (positive + negative)),
+            summary=title[:80],
+            rationale=f"教学回退规则：正向词 {positive} 个，负向词 {negative} 个。",
+            model="heuristic-v1",
+        )
+
+    def analyze_pending(self, db: Session, limit: int = 50, force: bool = False) -> int:
+        query = select(NewsItem).options(selectinload(NewsItem.sentiment)).order_by(
+            NewsItem.published_at.desc()
+        )
+        if not force:
+            query = query.where(~NewsItem.sentiment.has())
+        items = list(db.scalars(query.limit(limit)).all())
+        for item in items:
+            result = self.analyze(item.title, item.content, item.kind)
+            analysis = item.sentiment or SentimentAnalysis(news_id=item.id)
+            analysis.label = result.label
+            analysis.score = result.score
+            analysis.confidence = result.confidence
+            analysis.summary = result.summary
+            analysis.rationale = result.rationale
+            analysis.model = result.model
+            db.add(analysis)
+        db.commit()
+        return len(items)

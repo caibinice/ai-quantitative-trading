@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import hashlib
+from datetime import date, datetime
+from typing import Any
+
+import pandas as pd
+
+
+def _number(value: Any) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return float(str(value).replace(",", "").replace("%", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def _date(value: Any) -> date:
+    return pd.to_datetime(value).date()
+
+
+def _datetime(value: Any) -> datetime:
+    parsed = pd.to_datetime(value)
+    return parsed.to_pydatetime().replace(tzinfo=None)
+
+
+def content_hash(symbol: str | None, title: str, url: str, published_at: datetime) -> str:
+    value = f"{symbol or ''}|{title}|{url}|{published_at.isoformat()}"
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+class AkshareProvider:
+    """Small, replaceable adapter around public AKShare interfaces."""
+
+    source = "akshare"
+
+    @staticmethod
+    def _ak():
+        import akshare as ak
+
+        return ak
+
+    def stock_snapshot(self) -> list[dict[str, Any]]:
+        df = self._ak().stock_zh_a_spot_em()
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            rows.append(
+                {
+                    "symbol": str(record.get("代码", "")).zfill(6),
+                    "name": str(record.get("名称", "")),
+                    "latest": _number(record.get("最新价")),
+                    "change_percent": _number(record.get("涨跌幅")),
+                    "pe": _number(record.get("市盈率-动态")),
+                    "pb": _number(record.get("市净率")),
+                    "market_cap": _number(record.get("总市值")),
+                }
+            )
+        return rows
+
+    def daily_prices(
+        self, symbol: str, start_date: date, end_date: date, adjustment: str = "qfq"
+    ) -> list[dict[str, Any]]:
+        ak = self._ak()
+        try:
+            df = ak.stock_zh_a_hist(
+                symbol=symbol,
+                period="daily",
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+                adjust=adjustment,
+            )
+            return self._normalize_eastmoney_prices(df, symbol, adjustment)
+        except Exception:
+            # Eastmoney occasionally blocks a network route. Tencent provides a
+            # second public daily endpoint for the common Shanghai/Shenzhen symbols.
+            market_symbol = f"{'sh' if symbol.startswith(('5', '6', '9')) else 'sz'}{symbol}"
+            df = ak.stock_zh_a_hist_tx(
+                symbol=market_symbol,
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
+                adjust=adjustment,
+            )
+            return self._normalize_tencent_prices(df, symbol, adjustment)
+
+    def _normalize_eastmoney_prices(
+        self, df: pd.DataFrame, symbol: str, adjustment: str
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            close = _number(record.get("收盘"))
+            if close is None or close <= 0:
+                continue
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "trade_date": _date(record.get("日期")),
+                    "open": _number(record.get("开盘")) or close,
+                    "high": _number(record.get("最高")) or close,
+                    "low": _number(record.get("最低")) or close,
+                    "close": close,
+                    "volume": _number(record.get("成交量")) or 0,
+                    "amount": _number(record.get("成交额")) or 0,
+                    "turnover_rate": _number(record.get("换手率")),
+                    "adjustment": adjustment,
+                    "source": self.source,
+                }
+            )
+        return rows
+
+    def _normalize_tencent_prices(
+        self, df: pd.DataFrame, symbol: str, adjustment: str
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            close = _number(record.get("close"))
+            if close is None or close <= 0:
+                continue
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "trade_date": _date(record.get("date")),
+                    "open": _number(record.get("open")) or close,
+                    "high": _number(record.get("high")) or close,
+                    "low": _number(record.get("low")) or close,
+                    "close": close,
+                    "volume": _number(record.get("amount")) or 0,
+                    "amount": 0,
+                    "turnover_rate": None,
+                    "adjustment": adjustment,
+                    "source": "akshare-tencent",
+                }
+            )
+        return rows
+
+    def financial_metrics(self, symbol: str) -> list[dict[str, Any]]:
+        ak = self._ak()
+        try:
+            df = ak.stock_financial_abstract_new_ths(symbol=symbol, indicator="按报告期")
+            rows: list[dict[str, Any]] = []
+            for record in df.to_dict("records"):
+                report_date = record.get("report_date")
+                metric_name = str(record.get("metric_name", "")).strip()
+                if not report_date or not metric_name:
+                    continue
+                rows.append(
+                    {
+                        "symbol": symbol,
+                        "report_date": _date(report_date),
+                        "report_period": str(record.get("report_period", "")),
+                        "metric_name": metric_name,
+                        "metric_value": _number(record.get("value")),
+                        "yoy": _number(record.get("yoy")),
+                        "source": self.source,
+                    }
+                )
+            return rows
+        except Exception:
+            # Sina's wide table is a useful fallback when the THS interface changes.
+            df = ak.stock_financial_abstract(symbol=symbol)
+            rows = []
+            date_columns = [column for column in df.columns if str(column).isdigit()]
+            for record in df.to_dict("records"):
+                metric_name = str(record.get("指标", "")).strip()
+                for column in date_columns:
+                    value = _number(record.get(column))
+                    if not metric_name or value is None:
+                        continue
+                    rows.append(
+                        {
+                            "symbol": symbol,
+                            "report_date": _date(str(column)),
+                            "report_period": str(record.get("选项", "")),
+                            "metric_name": metric_name,
+                            "metric_value": value,
+                            "yoy": None,
+                            "source": self.source,
+                        }
+                    )
+            return rows
+
+    def news(self, symbol: str) -> list[dict[str, Any]]:
+        df = self._ak().stock_news_em(symbol=symbol)
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            title = str(record.get("新闻标题", "")).strip()
+            if not title:
+                continue
+            published_at = _datetime(record.get("发布时间"))
+            url = str(record.get("新闻链接", ""))
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "kind": "news",
+                    "title": title,
+                    "content": str(record.get("新闻内容", "")),
+                    "source": str(record.get("文章来源", "东方财富")),
+                    "source_url": url,
+                    "published_at": published_at,
+                    "content_hash": content_hash(symbol, title, url, published_at),
+                }
+            )
+        return rows
+
+    def notices(self, symbol: str, start_date: date, end_date: date) -> list[dict[str, Any]]:
+        df = self._ak().stock_individual_notice_report(
+            security=symbol,
+            symbol="全部",
+            begin_date=start_date.strftime("%Y%m%d"),
+            end_date=end_date.strftime("%Y%m%d"),
+        )
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            title = str(record.get("公告标题", "")).strip()
+            if not title:
+                continue
+            published_at = datetime.combine(_date(record.get("公告日期")), datetime.min.time())
+            url = str(record.get("网址", ""))
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "kind": "notice",
+                    "title": title,
+                    "content": str(record.get("公告类型", "")),
+                    "source": "东方财富公告",
+                    "source_url": url,
+                    "published_at": published_at,
+                    "content_hash": content_hash(symbol, title, url, published_at),
+                }
+            )
+        return rows
