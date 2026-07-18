@@ -17,6 +17,7 @@
 - Walk-forward：滚动训练窗口选择参数，最终只拼接下一测试窗口的样本外收益。
 - MySQL 任务队列：采集、AI 分析、质量检查和样本外实验由独立 Worker 执行，支持进度、重试和取消。
 - 数据质量告警：检查 OHLC、价格跳变、交易日缺口、过期数据、点时财务/基准覆盖和情绪分数范围。
+- 学习学院：五阶段十章节，从 Python 时间序列到因子、舆情、Walk-forward 和毕业研究，包含 Checklist、小测验与 5 个可运行 Demo。
 - 定时任务：可按 Cron 配置行情、舆情、评分、基础数据和质量检查；默认关闭，避免初次启动就请求外部数据。
 - 演示模式：可生成明确标注的合成数据，不依赖实时源也能学习完整流程。
 
@@ -56,6 +57,7 @@ pwsh -File scripts/dev.ps1
 打开：
 
 - 网页：[http://127.0.0.1:5173](http://127.0.0.1:5173)
+- 学习手册：[http://127.0.0.1:5173/learn](http://127.0.0.1:5173/learn)
 - API 文档：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 停止时在运行窗口按 `Ctrl+C`。
@@ -192,7 +194,7 @@ DATA_QUALITY_CRON=10 20 * * 1-5
 pwsh -File scripts/check.ps1
 ```
 
-检查内容：Ruff、pytest、TypeScript 和 Vite 生产构建。当前 18 个后端测试重点覆盖：
+检查内容：Ruff、pytest、TypeScript 和 Vite 生产构建。后端测试重点覆盖：
 
 - 信号必须延迟一个交易日；
 - 未来发布的舆情不能影响过去；
@@ -204,6 +206,7 @@ pwsh -File scripts/check.ps1
 - MySQL 队列优先级、取消和重试状态机；
 - OHLC/交易日缺口质量规则；
 - Walk-forward 最终曲线只包含测试窗口。
+- 学习手册中的 5 个 Python Demo 均可独立运行。
 
 ## 目录
 
@@ -222,6 +225,7 @@ ai-quantitative-trading/
 ├── frontend/src/
 │   ├── components/
 │   └── pages/                    # 含样本外、任务中心和数据治理
+├── learning/                     # 学习手册、毕业模板和 5 个可运行实验
 ├── scripts/                     # PowerShell 安装、启动、检查
 ├── .env.example
 └── README.md

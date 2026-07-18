@@ -5,6 +5,7 @@ import {
   CandlestickChart,
   CalendarCheck2,
   FlaskConical,
+  GraduationCap,
   ListTodo,
   Menu,
   Newspaper,
@@ -17,6 +18,7 @@ import { NavLink } from 'react-router-dom'
 
 const navItems = [
   { to: '/', label: '研究总览', icon: BarChart3 },
+  { to: '/learn', label: '学习学院', icon: GraduationCap },
   { to: '/market', label: '行情财务', icon: CandlestickChart },
   { to: '/rankings', label: 'AI 选股', icon: BrainCircuit },
   { to: '/sentiment', label: '舆情雷达', icon: Newspaper },
