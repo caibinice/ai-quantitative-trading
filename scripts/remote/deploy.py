@@ -14,6 +14,10 @@ from urllib.parse import quote_plus
 from remote_client import ROOT_DIR, STATE_DIR, RemoteClient, read_credentials
 
 APP_ROOT = "/opt/ai-quantitative-trading"
+DEFAULT_WATCHLIST = (
+    "000001,000333,000651,000858,002415,002594,300750,600000,"
+    "600036,600276,600519,601318,601398,601857,601899"
+)
 
 
 def build_archive(release_id: str) -> Path:
@@ -48,6 +52,7 @@ def build_app_env(public_ip: str) -> bytes:
     )
     values = {
         "APP_ENV": "production",
+        "ROOT_PATH": "/quant",
         "DATABASE_URL": database_url,
         "DATABASE_ECHO": "false",
         "CORS_ORIGINS": f"https://{public_ip}",
@@ -56,7 +61,7 @@ def build_app_env(public_ip: str) -> bytes:
         "LLM_API_KEY": llm.get("api-key", ""),
         "LLM_MODEL": llm.get("model", "deepseek-chat"),
         "SCHEDULER_ENABLED": "true",
-        "DEFAULT_WATCHLIST": "000001,600519,300750,601318,000858",
+        "DEFAULT_WATCHLIST": DEFAULT_WATCHLIST,
         "PRICE_SYNC_CRON": "20 18 * * 1-5",
         "NEWS_SYNC_CRON": "0 */2 * * *",
         "SCORE_CRON": "40 19 * * 1-5",
@@ -68,6 +73,16 @@ def build_app_env(public_ip: str) -> bytes:
 
 def load_or_create_web_auth() -> tuple[str, str]:
     path = STATE_DIR / "web-auth.json"
+    credentials = read_credentials()
+    configured = credentials["web.auth"] if credentials.has_section("web.auth") else {}
+    if configured.get("username") and configured.get("password"):
+        value = {
+            "username": configured["username"],
+            "password": configured["password"],
+        }
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+        return value["username"], value["password"]
     if path.exists():
         value = json.loads(path.read_text(encoding="utf-8"))
         return value["username"], value["password"]
@@ -129,7 +144,7 @@ rm -f {archive_remote} {env_remote} {auth_remote} {wrapper_remote}
         remote.close()
         archive.unlink(missing_ok=True)
 
-    print(f"PUBLIC_URL=https://{public_ip}")
+    print(f"PUBLIC_URL=https://{public_ip}/quant/")
     print(f"WEB_USERNAME={username}")
     print(f"WEB_PASSWORD_FILE={STATE_DIR / 'web-auth.json'}")
     print(f"RELEASE={release_id}")

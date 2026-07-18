@@ -259,7 +259,7 @@ for daily_return in returns:
     checklist: [
       '执行 setup 脚本并确认依赖安装成功。',
       '启动 API、Worker 和前端。',
-      '打开 /docs 并找到 tasks 接口。',
+      '打开 /quant/docs 并找到 tasks 接口（本地直连 API 时也可使用 /docs）。',
       '在任务中心观察一次任务状态变化。',
       '从 Strategy.tsx 追踪到 task_queue.py。',
       '完成本章测验且得分不低于 2/3。',
@@ -274,7 +274,7 @@ for daily_return in returns:
       command: 'pwsh -File scripts\\dev.ps1',
       summary: '启动完整研究舱，并通过 /docs 和任务中心追踪一次请求。',
       snippet: `前端操作
-  → POST /api/tasks
+  → POST /quant/api/tasks
   → aq_research_tasks
   → python -m app.worker
   → service function

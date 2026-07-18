@@ -34,6 +34,7 @@ from app.services.scoring import calculate_scores
 from app.services.sentiment import SentimentAnalyzer
 
 router = APIRouter()
+LEGACY_DEFAULT_WATCHLIST = ["000001", "600519", "300750", "601318", "000858"]
 
 
 def _strategy_payload(item: StrategyConfig) -> dict[str, Any]:
@@ -50,8 +51,8 @@ def _strategy_payload(item: StrategyConfig) -> dict[str, Any]:
 
 def _default_strategy(db: Session) -> StrategyConfig:
     item = db.scalar(select(StrategyConfig).where(StrategyConfig.name == "默认情绪行情双因子"))
+    settings = get_settings()
     if item is None:
-        settings = get_settings()
         payload = StrategyConfigPayload(watchlist=settings.watchlist)
         item = StrategyConfig(
             name=payload.name,
@@ -60,6 +61,11 @@ def _default_strategy(db: Session) -> StrategyConfig:
             watchlist=payload.watchlist,
             parameters=payload.parameters.model_dump(),
         )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+    elif item.watchlist == LEGACY_DEFAULT_WATCHLIST:
+        item.watchlist = settings.watchlist
         db.add(item)
         db.commit()
         db.refresh(item)

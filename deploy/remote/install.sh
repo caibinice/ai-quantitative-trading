@@ -37,12 +37,15 @@ echo "[3/8] Activating release"
 previous_release="$(readlink -f "$APP_ROOT/current" 2>/dev/null || true)"
 ln -sfn "$RELEASE_DIR" "$APP_ROOT/current.next"
 mv -Tf "$APP_ROOT/current.next" "$APP_ROOT/current"
+mkdir -p "$APP_ROOT/www"
+ln -sfn "$RELEASE_DIR/frontend/dist" "$APP_ROOT/www/quant.next"
+mv -Tf "$APP_ROOT/www/quant.next" "$APP_ROOT/www/quant"
 chown -R "$APP_USER:$APP_USER" "$RELEASE_DIR"
 chown "$APP_USER:$APP_USER" "$SHARED/app.env"
 chmod 600 "$SHARED/app.env"
 chown root:nginx "$SHARED/htpasswd"
 chmod 640 "$SHARED/htpasswd"
-chmod 755 "$APP_ROOT" "$APP_ROOT/releases" "$RELEASE_DIR" "$SHARED" "$SHARED/acme"
+chmod 755 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/www" "$RELEASE_DIR" "$SHARED" "$SHARED/acme"
 
 render() {
   sed \
@@ -70,7 +73,7 @@ if [[ ! -f /etc/nginx/nginx.conf.dist ]]; then
   cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.dist
 fi
 install -m 644 "$RELEASE_DIR/deploy/nginx/nginx.conf" /etc/nginx/nginx.conf
-rm -f /etc/nginx/conf.d/*.conf
+rm -f /etc/nginx/conf.d/ai-quant.conf
 render "$RELEASE_DIR/deploy/nginx/http.conf.template" /etc/nginx/conf.d/ai-quant.conf
 nginx -t
 systemctl enable --now nginx >/dev/null
@@ -122,6 +125,8 @@ if [[ "$healthy" != "true" ]]; then
   if [[ -n "$previous_release" && -d "$previous_release" ]]; then
     ln -sfn "$previous_release" "$APP_ROOT/current.next"
     mv -Tf "$APP_ROOT/current.next" "$APP_ROOT/current"
+    ln -sfn "$previous_release/frontend/dist" "$APP_ROOT/www/quant.next"
+    mv -Tf "$APP_ROOT/www/quant.next" "$APP_ROOT/www/quant"
     systemctl restart ai-quant-api.service ai-quant-worker.service nginx.service
   fi
   echo "API health check failed; previous release restored." >&2

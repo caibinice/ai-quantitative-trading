@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { chartPalette, useTheme } from '../theme-context'
 import type { RankingItem } from '../types'
 
 export function Rankings() {
+  const { theme } = useTheme()
+  const chart = chartPalette(theme)
   const [items, setItems] = useState<RankingItem[]>([])
   const [scoreDate, setScoreDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,10 +33,10 @@ export function Rankings() {
 
   const chartOption = {
     grid: { left: 90, right: 30, top: 10, bottom: 30 },
-    xAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { color: '#1b2b3d' } }, axisLabel: { color: '#718096' } },
-    yAxis: { type: 'category', inverse: true, data: items.slice(0, 8).map((item) => item.name), axisLine: { show: false }, axisLabel: { color: '#b8c5d6' } },
+    xAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { color: chart.split } }, axisLabel: { color: chart.muted } },
+    yAxis: { type: 'category', inverse: true, data: items.slice(0, 8).map((item) => item.name), axisLine: { show: false }, axisLabel: { color: chart.text } },
     tooltip: { trigger: 'axis' },
-    series: [{ type: 'bar', data: items.slice(0, 8).map((item) => item.total_score), barWidth: 10, itemStyle: { color: '#37c6e7', borderRadius: 8 }, showBackground: true, backgroundStyle: { color: '#152536', borderRadius: 8 } }],
+    series: [{ type: 'bar', data: items.slice(0, 8).map((item) => item.total_score), barWidth: 10, itemStyle: { color: '#37c6e7', borderRadius: 8 }, showBackground: true, backgroundStyle: { color: chart.track, borderRadius: 8 } }],
   }
 
   if (error && !items.length) return <ErrorPanel message={error} />
@@ -45,7 +48,7 @@ export function Rankings() {
       {error && <div className="inline-alert">{error}</div>}
       <div className="info-banner"><Info size={18} /><span>评分日：{scoreDate ?? '尚未生成'}。总分仅用于研究排序，不能直接解释为预期收益或买入概率。</span></div>
       <section className="ranking-layout">
-        <article className="panel ranking-chart"><div className="panel-head"><div><span className="section-kicker">TOP SIGNALS</span><h2>综合得分</h2></div></div>{items.length ? <ReactECharts option={chartOption} style={{ height: 330 }} /> : <div className="empty-inline">暂无评分</div>}</article>
+        <article className="panel ranking-chart"><div className="panel-head"><div><span className="section-kicker">TOP SIGNALS</span><h2>综合得分</h2></div></div>{items.length ? <ReactECharts key={theme} option={chartOption} style={{ height: 330 }} /> : <div className="empty-inline">暂无评分</div>}</article>
         <article className="panel score-method"><Bot size={25} /><span className="section-kicker">SCORING MODEL</span><h2>三类证据，一个结论</h2><p>动量衡量价格趋势并扣除波动惩罚；质量来自最新可得财务指标；情绪按置信度与时间衰减聚合。</p><div className="method-weights"><span><i style={{ width: '55%' }} />行情 55%</span><span><i style={{ width: '15%' }} />财务 15%</span><span><i style={{ width: '30%' }} />舆情 30%</span></div></article>
       </section>
       <section className="panel table-panel">

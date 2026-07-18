@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_STOCK_NAMES
 from app.models import JobRun, utcnow
 from app.services.provider import AkshareProvider
 from app.services.repository import ensure_stock, upsert_financials, upsert_news, upsert_prices
@@ -32,7 +33,8 @@ def sync_market_data(
             names = {}
         for symbol in symbols:
             try:
-                ensure_stock(db, symbol, names.get(symbol, symbol))
+                name = names.get(symbol) or DEFAULT_STOCK_NAMES.get(symbol, symbol)
+                ensure_stock(db, symbol, name)
                 db.commit()
             except Exception as exc:
                 db.rollback()

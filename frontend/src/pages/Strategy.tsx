@@ -4,11 +4,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, formatNumber, formatPercent } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { DEFAULT_STOCK_UNIVERSE, MAX_STOCK_COUNT } from '../stockUniverse'
+import { chartPalette, useTheme } from '../theme-context'
 import type { BacktestResult, ResearchTask, StrategyConfig, StrategyParameters } from '../types'
 
 type Action = 'save' | 'sync' | 'analyze' | 'score' | 'backtest' | ''
 
 export function Strategy() {
+  const { theme } = useTheme()
+  const chart = chartPalette(theme)
   const [config, setConfig] = useState<StrategyConfig | null>(null)
   const [watchlistText, setWatchlistText] = useState('')
   const [startDate, setStartDate] = useState(() => yearAgo())
@@ -51,16 +55,27 @@ export function Strategy() {
     if (!config) return
     setConfig({ ...config, parameters: { ...config.parameters, [key]: value } })
   }
+  const watchlist = watchlistText.split(/[,，\s]+/).map((item) => item.trim()).filter(Boolean)
+  const resizeWatchlist = (requested: number) => {
+    const count = Math.max(1, Math.min(MAX_STOCK_COUNT, requested || 1))
+    const unique = [...new Set(watchlist)]
+    const expanded = [...unique]
+    for (const symbol of DEFAULT_STOCK_UNIVERSE) {
+      if (expanded.length >= count) break
+      if (!expanded.includes(symbol)) expanded.push(symbol)
+    }
+    setWatchlistText(expanded.slice(0, count).join(', '))
+  }
   const weightTotal = config ? config.parameters.momentum_weight + config.parameters.quality_weight + config.parameters.sentiment_weight : 0
   const chartOption = useMemo(() => ({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['双因子策略', '指数基准'], textStyle: { color: '#8fa2b7' }, top: 0 },
+    legend: { data: ['双因子策略', '指数基准'], textStyle: { color: chart.text }, top: 0 },
     grid: { left: 60, right: 24, top: 48, bottom: 40 },
-    xAxis: { type: 'category', boundaryGap: false, data: result?.equity_curve.map((row) => row.date) ?? [], axisLabel: { color: '#718096' }, axisLine: { lineStyle: { color: '#2a3b50' } } },
-    yAxis: { type: 'value', scale: true, axisLabel: { color: '#718096' }, splitLine: { lineStyle: { color: '#1a2a3c' } } },
+    xAxis: { type: 'category', boundaryGap: false, data: result?.equity_curve.map((row) => row.date) ?? [], axisLabel: { color: chart.muted }, axisLine: { lineStyle: { color: chart.line } } },
+    yAxis: { type: 'value', scale: true, axisLabel: { color: chart.muted }, splitLine: { lineStyle: { color: chart.split } } },
     dataZoom: [{ type: 'inside' }],
     series: [{ name: '双因子策略', type: 'line', showSymbol: false, smooth: 0.2, data: result?.equity_curve.map((row) => row.equity) ?? [], lineStyle: { width: 2, color: '#37c6e7' }, areaStyle: { color: '#37c6e718' } }, { name: '指数基准', type: 'line', showSymbol: false, data: result?.equity_curve.map((row) => row.benchmark) ?? [], lineStyle: { width: 1.5, color: '#a989ff', type: 'dashed' } }],
-  }), [result])
+  }), [result, chart.line, chart.muted, chart.split, chart.text])
 
   if (error && !config) return <ErrorPanel message={error} />
   if (!config) return <Loading />
@@ -73,7 +88,8 @@ export function Strategy() {
       <section className="strategy-layout">
         <div className="strategy-column">
           <article className="panel config-panel">
-            <div className="panel-head"><div><span className="section-kicker">UNIVERSE</span><h2>股票池与样本期</h2></div><DatabaseZap size={21} /></div>
+            <div className="panel-head"><div><span className="section-kicker">UNIVERSE</span><h2>股票池与样本期</h2></div><span className="source-chip">当前 {watchlist.length} 只</span></div>
+            <label className="field stock-count-field"><span>股票数量（自动补充默认大盘股，1–{MAX_STOCK_COUNT}）</span><input aria-label="股票数量" type="number" min={1} max={MAX_STOCK_COUNT} value={watchlist.length || 1} onChange={(event) => resizeWatchlist(Number(event.target.value))} /></label>
             <label className="field"><span>股票代码（逗号分隔）</span><textarea value={watchlistText} onChange={(event) => setWatchlistText(event.target.value)} rows={3} /></label>
             <div className="field-row"><label className="field"><span>回测开始</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label className="field"><span>回测结束</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div>
           </article>

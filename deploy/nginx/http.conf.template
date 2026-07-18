@@ -12,8 +12,9 @@ server {
         default_type text/plain;
     }
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
+    location /quant/api/ {
+        limit_req zone=ai_quant_limit burst=50 nodelay;
+        proxy_pass http://127.0.0.1:8000/api/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -21,18 +22,31 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location /docs {
-        proxy_pass http://127.0.0.1:8000;
+    location /quant/docs {
+        proxy_pass http://127.0.0.1:8000/docs;
         proxy_set_header Host $host;
     }
 
-    location = /openapi.json {
-        proxy_pass http://127.0.0.1:8000;
+    location = /quant/openapi.json {
+        proxy_pass http://127.0.0.1:8000/openapi.json;
         proxy_set_header Host $host;
+    }
+
+    location = / {
+        return 302 /quant/;
+    }
+
+    location = /quant {
+        return 301 /quant/;
+    }
+
+    location /quant/ {
+        limit_req zone=ai_quant_limit burst=50 nodelay;
+        root __APP_ROOT__/www;
+        try_files $uri $uri/ /quant/index.html;
     }
 
     location / {
-        root __APP_ROOT__/current/frontend/dist;
-        try_files $uri $uri/ /index.html;
+        return 404;
     }
 }

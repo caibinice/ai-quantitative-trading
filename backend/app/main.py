@@ -29,6 +29,7 @@ app = FastAPI(
     title=settings.app_name,
     description="仅用于学习、研究和模拟回测，不连接券商，不执行真实交易。",
     version="0.1.0",
+    root_path=settings.root_path,
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -49,6 +50,6 @@ app.include_router(learning_router, prefix=settings.api_prefix)
 def root() -> dict[str, str]:
     return {
         "name": settings.app_name,
-        "docs": "/docs",
+        "docs": f"{settings.root_path}/docs",
         "notice": "研究与教学用途，不构成投资建议。",
     }

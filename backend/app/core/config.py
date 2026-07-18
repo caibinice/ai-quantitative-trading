@@ -9,6 +9,27 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
+DEFAULT_WATCHLIST = (
+    "000001,000333,000651,000858,002415,002594,300750,600000,"
+    "600036,600276,600519,601318,601398,601857,601899"
+)
+DEFAULT_STOCK_NAMES = {
+    "000001": "平安银行",
+    "000333": "美的集团",
+    "000651": "格力电器",
+    "000858": "五粮液",
+    "002415": "海康威视",
+    "002594": "比亚迪",
+    "300750": "宁德时代",
+    "600000": "浦发银行",
+    "600036": "招商银行",
+    "600276": "恒瑞医药",
+    "600519": "贵州茅台",
+    "601318": "中国平安",
+    "601398": "工商银行",
+    "601857": "中国石油",
+    "601899": "紫金矿业",
+}
 
 
 def _read_section(path: Path, target: str) -> dict[str, str]:
@@ -40,6 +61,7 @@ class Settings(BaseSettings):
     app_name: str = "AI 量化研究舱"
     app_env: str = "development"
     api_prefix: str = "/api"
+    root_path: str = ""
     cors_origins: str = "http://localhost:5173"
     database_url: str = ""
     database_echo: bool = False
@@ -52,7 +74,7 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 45
 
     scheduler_enabled: bool = False
-    default_watchlist: str = "000001,600519,300750,601318,000858"
+    default_watchlist: str = DEFAULT_WATCHLIST
     upstream_proxy: str = ""
     price_sync_cron: str = "20 18 * * 1-5"
     news_sync_cron: str = "0 */2 * * *"

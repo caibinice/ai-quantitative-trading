@@ -53,7 +53,12 @@ button { cursor: pointer; }
 .topbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 31px; border-bottom: 1px solid var(--line-soft); background: #07121ed9; backdrop-filter: blur(18px); }
 .market-status { display: flex; align-items: center; gap: 9px; color: #8ba0b5; font-size: 11px; font-weight: 600; }
 .market-status span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 9px var(--green); }
+.market-status strong { color: var(--text); font-size: 12px; }
+.market-status small { padding-left: 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 500; }
+.topbar-actions { display: flex; align-items: center; gap: 13px; }
 .topbar-note { color: #53687d; font-size: 10px; }
+.theme-toggle { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px; color: #90a5b9; background: var(--panel-2); font-size: 9px; font-weight: 700; }
+.theme-toggle:hover { color: var(--cyan); border-color: #327087; }
 .menu-trigger { display: none; border: 0; background: transparent; color: #9aacc0; }
 .content { max-width: 1540px; margin: 0 auto; padding: 36px 38px 70px; }
 
@@ -208,6 +213,7 @@ tbody tr:hover { background: #11223288; }
 .strategy-column { display: grid; gap: 15px; }
 .config-panel, .workflow-panel, .guardrail-panel, .result-panel { padding: 19px; }
 .field { display: grid; gap: 7px; margin-top: 15px; }.field > span { color: #6f8499; font-size: 9px; }.field input, .field textarea { width: 100%; padding: 10px 11px; font-size: 10px; resize: vertical; }.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stock-count-field { grid-template-columns: 1fr 110px; align-items: center; }.stock-count-field > span { font-size: 9px; }.stock-count-field input { text-align: center; }
 .weight-total { padding: 5px 8px; border-radius: 5px; }.weight-total.valid { color: var(--green) !important; background: #32d6a00d; }.weight-total.invalid { color: var(--red) !important; background: #ff6b780d; }
 .range-field { display: block; margin-top: 19px; }.range-field > span { display: flex; justify-content: space-between; color: #8195aa; font-size: 9px; }.range-field b { color: var(--cyan); }.range-field input { width: 100%; height: 3px; margin-top: 11px; padding: 0; border: 0; appearance: none; background: linear-gradient(90deg, var(--cyan) var(--range-progress), #1a2d3f var(--range-progress)); }.range-field.violet input { background: linear-gradient(90deg, var(--violet) var(--range-progress), #1a2d3f var(--range-progress)); }.range-field.green input { background: linear-gradient(90deg, var(--green) var(--range-progress), #1a2d3f var(--range-progress)); }.range-field input::-webkit-slider-thumb { width: 12px; height: 12px; appearance: none; border: 2px solid #091522; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 2px #37c6e755; }.range-field.violet input::-webkit-slider-thumb { background: var(--violet); }.range-field.green input::-webkit-slider-thumb { background: var(--green); }
 .compact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
@@ -373,4 +379,137 @@ tbody tr:hover { background: #11223288; }
   .learning-hero-copy h2 { font-size: 20px; }
   .outcome-actions { align-items: flex-start; flex-direction: column; }
   .chapter-hero { padding: 20px; }.chapter-hero h1 { font-size: 25px; }
+}
+
+/* 明亮模式：语义色变量和历史暗色表面一起切换。 */
+html[data-theme='light'] {
+  --bg: #f3f6fa;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f7f9fc;
+  --line: #d9e3ed;
+  --line-soft: #e8eef4;
+  --text: #172033;
+  --muted: #66788c;
+  --cyan: #087f9c;
+  --cyan-soft: #087f9c14;
+  --green: #087f5b;
+  --red: #d43d50;
+  --amber: #a96800;
+  --violet: #7252c7;
+  color: var(--text);
+  background: var(--bg);
+}
+html[data-theme='light'] body { color: var(--text); background: radial-gradient(circle at 72% -20%, #dceff5 0, transparent 34%), var(--bg); }
+html[data-theme='light'] .sidebar { border-color: var(--line); background: linear-gradient(180deg, #fff, #f8fafc); box-shadow: 8px 0 28px #23405b0a; }
+html[data-theme='light'] .brand-mark { border-color: #1597b94d; background: linear-gradient(145deg, #dff6fb, #f4fbfd); box-shadow: none; }
+html[data-theme='light'] .brand strong,
+html[data-theme='light'] .market-status strong { color: #172033; }
+html[data-theme='light'] .brand span,
+html[data-theme='light'] .sidebar nav a,
+html[data-theme='light'] .sidebar-foot span { color: #64778b; }
+html[data-theme='light'] .nav-label { color: #8697a8; }
+html[data-theme='light'] .sidebar nav a:hover { color: #172033; background: #eef4f8; }
+html[data-theme='light'] .sidebar nav a.active { color: #0b647b; border-color: #9cd8e54f; background: linear-gradient(90deg, #e3f5f9, #f1f9fb); }
+html[data-theme='light'] .sidebar-foot { border-color: var(--line); background: #f7fafc; }
+html[data-theme='light'] .sidebar-foot strong { color: #465a6f; }
+html[data-theme='light'] .topbar { background: #ffffffdf; box-shadow: 0 4px 18px #23405b0a; }
+html[data-theme='light'] .topbar-note { color: #7a8b9c; }
+html[data-theme='light'] .theme-toggle { color: #53687d; background: #f5f8fb; }
+html[data-theme='light'] .panel,
+html[data-theme='light'] .stat-card { border-color: var(--line); background: linear-gradient(145deg, #fff, #fafcfe); box-shadow: 0 12px 32px #1c3b5710; }
+html[data-theme='light'] .page-header h1,
+html[data-theme='light'] .panel h2,
+html[data-theme='light'] .panel h3,
+html[data-theme='light'] .stat-card > strong,
+html[data-theme='light'] .learning-hero h2,
+html[data-theme='light'] .learning-section-head h2,
+html[data-theme='light'] .chapter-hero h1 { color: var(--text); }
+html[data-theme='light'] .page-header p,
+html[data-theme='light'] .score-method p,
+html[data-theme='light'] .sentiment-gauge p,
+html[data-theme='light'] .small-note,
+html[data-theme='light'] .learning-hero-copy p,
+html[data-theme='light'] .learning-section-head p,
+html[data-theme='light'] .chapter-hero p { color: #607287; }
+html[data-theme='light'] select,
+html[data-theme='light'] input,
+html[data-theme='light'] textarea,
+html[data-theme='light'] .select-wrap,
+html[data-theme='light'] .icon-button,
+html[data-theme='light'] .source-chip { color: #34495f; border-color: var(--line); background: #f7f9fc; }
+html[data-theme='light'] .button { color: #40566d; background: #f7f9fc; }
+html[data-theme='light'] .button.primary { color: #fff; background: linear-gradient(135deg, #159fbd, #087f9c); }
+html[data-theme='light'] .stat-card > span,
+html[data-theme='light'] .legend-row,
+html[data-theme='light'] .pipeline-step,
+html[data-theme='light'] .panel-head > a,
+html[data-theme='light'] .panel-head > span { color: #65798d; }
+html[data-theme='light'] .stat-rule,
+html[data-theme='light'] .score-track,
+html[data-theme='light'] .cell-score > i,
+html[data-theme='light'] .task-progress i,
+html[data-theme='light'] .stage-progress,
+html[data-theme='light'] .chapter-progress-line,
+html[data-theme='light'] .method-weights i { background: #e5edf4; }
+html[data-theme='light'] .stock-name strong,
+html[data-theme='light'] .score-number strong,
+html[data-theme='light'] .quote-grid strong,
+html[data-theme='light'] .metric-item strong,
+html[data-theme='light'] td,
+html[data-theme='light'] .workflow-button strong,
+html[data-theme='light'] .quick-task-grid strong,
+html[data-theme='light'] .governance-card strong,
+html[data-theme='light'] .pit-list strong,
+html[data-theme='light'] .stage-card h3,
+html[data-theme='light'] .stage-chapters strong,
+html[data-theme='light'] .glossary-grid strong,
+html[data-theme='light'] .chapter-nav-progress strong,
+html[data-theme='light'] .concept-card h3,
+html[data-theme='light'] .project-map code,
+html[data-theme='light'] .quiz-questions h3,
+html[data-theme='light'] .resource-list strong { color: #263b50; }
+html[data-theme='light'] .pipeline-step > span { border-color: #a8d7e1; background: #edf8fa; }
+html[data-theme='light'] .pipeline-step > i,
+html[data-theme='light'] .sentiment-marker::before { background: #dce6ee; }
+html[data-theme='light'] .job-pill,
+html[data-theme='light'] .sentiment-result { color: #60748a; background: #f0f4f8; }
+html[data-theme='light'] .metric-grid,
+html[data-theme='light'] .glossary-grid { background: var(--line-soft); }
+html[data-theme='light'] .metric-item,
+html[data-theme='light'] .glossary-grid > div,
+html[data-theme='light'] .result-metrics > div { background: #fff; }
+html[data-theme='light'] tbody tr:hover { background: #f2f7fa; }
+html[data-theme='light'] th { color: #60748a; }
+html[data-theme='light'] .info-banner { color: #526d80; background: #eaf7fa; }
+html[data-theme='light'] .workflow-button,
+html[data-theme='light'] .quick-task-grid button,
+html[data-theme='light'] .stage-chapters a,
+html[data-theme='light'] .chapter-nav-progress,
+html[data-theme='light'] .chapter-meta span,
+html[data-theme='light'] .quiz-questions > article,
+html[data-theme='light'] .resource-list a { color: #596f84; background: #f7f9fc; }
+html[data-theme='light'] .workflow-button:hover,
+html[data-theme='light'] .quick-task-grid button:hover,
+html[data-theme='light'] .stage-chapters a:hover,
+html[data-theme='light'] .resource-list a:hover { background: #eef6f9; }
+html[data-theme='light'] .learning-hero,
+html[data-theme='light'] .chapter-hero { background: radial-gradient(circle at 88% 12%, #ccebf2, transparent 31%), linear-gradient(145deg, #fff, #f7fbfc); }
+html[data-theme='light'] .outcome-panel { border-color: #cfc2ef; background: radial-gradient(circle at 90% 10%, #e7e0f7, transparent 38%), linear-gradient(145deg, #fff, #faf9fd); }
+html[data-theme='light'] .chapter-nav-stage > a:hover { background: #eef4f8; }
+html[data-theme='light'] .chapter-nav-stage > a.active { border-color: #9dd7e3; background: #e9f6f9; }
+html[data-theme='light'] .chapter-nav-stage i { color: #607489; background: #edf2f6; }
+html[data-theme='light'] .chapter-objective { background: #f4f0fc; }
+html[data-theme='light'] .demo-command,
+html[data-theme='light'] .demo-panel pre { color: #335f72; background: #f2f6f8; }
+html[data-theme='light'] .checklist-panel button { color: #51687c; }
+html[data-theme='light'] .checklist-panel button:hover { background: #f1f6f9; }
+html[data-theme='light'] .quiz-options label { color: #52687d; background: #fff; }
+html[data-theme='light'] .quiz-options label.selected { color: #285e70; background: #ecf8fa; }
+
+@media (max-width: 620px) {
+  .market-status small { display: none; }
+  .theme-toggle span { display: none; }
+  .theme-toggle { width: 34px; padding: 0; justify-content: center; }
+  .stock-count-field { grid-template-columns: 1fr 86px; }
 }

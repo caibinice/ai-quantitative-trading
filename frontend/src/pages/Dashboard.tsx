@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { api, formatNumber } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { chartPalette, useTheme } from '../theme-context'
 
 interface Summary {
   counts: { stocks: number; price_rows: number; news: number; analyzed: number }
@@ -25,6 +26,8 @@ interface Summary {
 }
 
 export function Dashboard() {
+  const { theme } = useTheme()
+  const chart = chartPalette(theme)
   const [data, setData] = useState<Summary | null>(null)
   const [error, setError] = useState('')
 
@@ -56,7 +59,7 @@ export function Dashboard() {
       style: {
         text: `${data.counts.analyzed}\n已分析`,
         textAlign: 'center',
-        fill: '#eaf3ff',
+        fill: chart.strong,
         fontSize: 18,
         lineHeight: 25,
         fontWeight: 700,
@@ -118,7 +121,7 @@ export function Dashboard() {
 
         <article className="panel sentiment-card">
           <div className="panel-head"><div><span className="section-kicker">SENTIMENT</span><h2>舆情温度</h2></div></div>
-          <ReactECharts option={sentimentOption} style={{ height: 220 }} />
+          <ReactECharts key={theme} option={sentimentOption} style={{ height: 220 }} />
           <div className="legend-row">
             <span><i className="dot green" />利好 {data.sentiment_stats['利好'] ?? 0}</span>
             <span><i className="dot gray" />中性 {data.sentiment_stats['中性'] ?? 0}</span>

@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.core.config import DEFAULT_STOCK_NAMES  # noqa: E402
 from app.core.database import SessionLocal, create_tables  # noqa: E402
 from app.models import (  # noqa: E402
     DailyPrice,
@@ -27,13 +28,7 @@ from app.schemas import StrategyParameters  # noqa: E402
 from app.services.data_quality import run_data_quality_checks  # noqa: E402
 from app.services.scoring import calculate_scores  # noqa: E402
 
-STOCKS = {
-    "000001": "平安银行",
-    "600519": "贵州茅台",
-    "300750": "宁德时代",
-    "601318": "中国平安",
-    "000858": "五粮液",
-}
+STOCKS = DEFAULT_STOCK_NAMES
 
 
 def seed() -> None:

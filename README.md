@@ -11,6 +11,8 @@
 - AI 选股：行情动量、财务质量、舆情情绪三个可解释分项及综合排名。
 - 舆情雷达：新闻/公告时间线、利好/中性/利空、置信度、摘要和判断理由。
 - 策略实验室：可视化配置股票池、因子权重、窗口、门槛、持仓数量、手续费和滑点。
+- 动态股票池：默认 15 只跨行业大盘股，可用数量控件在 1–30 只间自动扩缩，也可直接编辑代码。
+- 明暗主题：顶部一键切换明亮/暗黑风格，主题会保存在浏览器，ECharts 图表同步换色。
 - 双因子回测：情绪 + 行情，强制信号延迟一根 K 线，输出资金曲线、基准、收益、回撤、夏普和换手率。
 - 交易日历与指数基准：保存 A 股交易日，回测可使用沪深 300 等真实指数，不再默认用股票池等权收益冒充基准。
 - 点时财务：报告期和真实公告日分开保存，评分日只能读取当时已经发布的指标。
@@ -57,15 +59,15 @@ pwsh -File scripts/dev.ps1
 
 打开：
 
-- 网页：[http://127.0.0.1:5173](http://127.0.0.1:5173)
-- 学习手册：[http://127.0.0.1:5173/learn](http://127.0.0.1:5173/learn)
+- 网页：[http://127.0.0.1:5173/quant/](http://127.0.0.1:5173/quant/)
+- 学习手册：[http://127.0.0.1:5173/quant/learn](http://127.0.0.1:5173/quant/learn)
 - API 文档：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 停止时在运行窗口按 `Ctrl+C`。
 
 ## 学习手册怎么用
 
-打开 `/learn` 是总路线页，进入章节后可以阅读知识梗概、运行 Demo、勾选 Checklist、完成 3 题小测验，并用页面底部的“上一章 / 下一章”连续学习。
+打开 `/quant/learn` 是总路线页，进入章节后可以阅读知识梗概、运行 Demo、勾选 Checklist、完成 3 题小测验，并用页面底部的“上一章 / 下一章”连续学习。
 
 | 阶段 | 章节 | 目标 |
 | --- | --- | --- |
@@ -106,6 +108,10 @@ port=22
 user=普通 SSH 用户
 password=SSH 密码
 root_password=可通过 su 使用的 root 密码
+
+[web.auth]
+username=你的网页用户名
+password=只保存在本机的网页密码
 ```
 
 首次及后续发布都使用同一条命令：
@@ -118,19 +124,19 @@ pwsh -File scripts/deploy.ps1
 
 1. 运行 Ruff、pytest 和前端生产构建；
 2. 只打包源码与 `frontend/dist`，不会上传 `.env`、`credentials.txt` 或 `.deploy`；
-3. 在服务器安装原生 Python 3.11 与 Nginx，创建 1GB 低优先级防 OOM swap；
+3. 在服务器安装原生 Python 3.11 与 Nginx，创建 1GB 低优先级防 OOM swap，并把应用隔离在 `/quant`；
 4. 写入 systemd API/Worker 服务并连接 `credentials.txt` 中的同一个远程 MySQL；
 5. 为公网 IP 申请 Let’s Encrypt 受信任短期证书，80 自动跳转 443；
 6. 每天两次检查证书续期，成功后热加载 Nginx；
 7. 执行 API 健康检查；失败时自动恢复上一个 release。
 
-Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用 `ai-quant-cert-renew.timer` 太久。第一次发布会生成独立网页账号，保存在本机、不提交 Git 的：
+Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用 `ai-quant-cert-renew.timer` 太久。发布会优先读取 `credentials.txt` 的 `[web.auth]`；未配置时才生成随机网页账号。最终凭据状态保存在本机、不提交 Git 的：
 
 ```text
 .deploy/web-auth.json
 ```
 
-浏览器访问 `https://服务器公网IP`，输入其中的用户名和密码。HTTP Basic Auth 只在 HTTPS 上发送；80 端口只负责 ACME 验证和跳转。API 只监听服务器 `127.0.0.1:8000`，外网不能绕过 Nginx 登录。
+浏览器访问 `https://服务器公网IP/quant/`，输入其中的用户名和密码。根路径会跳转到 `/quant/`，前端、API 和文档分别位于 `/quant/`、`/quant/api/` 和 `/quant/docs`，便于同一服务器以后部署其他路径应用。HTTP Basic Auth 只在 HTTPS 上发送，并对请求做基础限速；80 端口只负责 ACME 验证和跳转。API 只监听服务器 `127.0.0.1:8000`，外网不能绕过 Nginx 登录。
 
 常用运维命令：
 
@@ -246,7 +252,7 @@ applied_weights = targets.shift(1).fillna(0.0)
 
 ## 真实数据工作流
 
-1. 在“策略实验室”先把股票池缩小到 1–5 只。
+1. 默认股票池为 15 只真实 A 股代码；第一次验证免费源时可先缩小到 3–5 只，确认稳定后再恢复 15 只或继续扩展。
 2. 在“数据治理”同步交易日历、指数和点时财务。
 3. 在“策略实验室”把行情、新闻、AI 分析和评分任务放入队列，并在“任务中心”观察进度。
 4. 大模型情绪任务会消耗配置的 API 额度。
@@ -275,7 +281,7 @@ DATA_QUALITY_CRON=10 20 * * 1-5
 pwsh -File scripts/check.ps1
 ```
 
-检查内容：Ruff、pytest、TypeScript 和 Vite 生产构建。后端测试重点覆盖：
+检查内容：Ruff、pytest、ESLint、TypeScript 和 Vite 生产构建。后端测试重点覆盖：
 
 - 信号必须延迟一个交易日；
 - 未来发布的舆情不能影响过去；

@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { chartPalette, useTheme } from '../theme-context'
 import type { NewsItem, Stock } from '../types'
 
 export function Sentiment() {
+  const { theme } = useTheme()
+  const chart = chartPalette(theme)
   const [items, setItems] = useState<NewsItem[]>([])
   const [stocks, setStocks] = useState<Stock[]>([])
   const [symbol, setSymbol] = useState('')
@@ -39,7 +42,7 @@ export function Sentiment() {
   const analyzed = items.filter((item) => item.score !== null)
   const average = analyzed.length ? analyzed.reduce((sum, item) => sum + (item.score ?? 0), 0) / analyzed.length : 0
   const gaugeOption = {
-    series: [{ type: 'gauge', startAngle: 210, endAngle: -30, min: -1, max: 1, splitNumber: 4, radius: '95%', center: ['50%', '58%'], progress: { show: true, width: 12, itemStyle: { color: average >= 0 ? '#32d6a0' : '#ff6b78' } }, axisLine: { lineStyle: { width: 12, color: [[1, '#1b2d40']] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { color: '#718096', distance: -38, fontSize: 10 }, pointer: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, '10%'], formatter: (value: number) => value.toFixed(2), color: '#eaf3ff', fontSize: 30, fontWeight: 700 }, title: { offsetCenter: [0, '42%'], color: '#718096', fontSize: 12 }, data: [{ value: average, name: '平均情绪分' }] }],
+    series: [{ type: 'gauge', startAngle: 210, endAngle: -30, min: -1, max: 1, splitNumber: 4, radius: '95%', center: ['50%', '58%'], progress: { show: true, width: 12, itemStyle: { color: average >= 0 ? '#32d6a0' : '#ff6b78' } }, axisLine: { lineStyle: { width: 12, color: [[1, chart.track]] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { color: chart.muted, distance: -38, fontSize: 10 }, pointer: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, '10%'], formatter: (value: number) => value.toFixed(2), color: chart.strong, fontSize: 30, fontWeight: 700 }, title: { offsetCenter: [0, '42%'], color: chart.muted, fontSize: 12 }, data: [{ value: average, name: '平均情绪分' }] }],
   }
 
   if (error && !items.length) return <ErrorPanel message={error} />
@@ -49,7 +52,7 @@ export function Sentiment() {
       <PageHeader eyebrow="Sentiment intelligence" title="舆情与公告事件雷达" description="定时采集公开新闻和公告，再由大模型输出结构化利好/中性/利空、置信度与理由。" actions={<button className="button primary" onClick={analyze} disabled={analyzing}><Brain size={17} />{analyzing ? 'AI 分析中…' : '分析待处理事件'}</button>} />
       {error && <div className="inline-alert">{error}</div>}
       <section className="sentiment-overview">
-        <article className="panel sentiment-gauge"><div><span className="section-kicker">MARKET MOOD</span><h2>当前股票池情绪</h2><p>统计基于当前筛选列表，不等同于全市场情绪。</p></div><ReactECharts option={gaugeOption} style={{ height: 210, width: 260 }} /></article>
+        <article className="panel sentiment-gauge"><div><span className="section-kicker">MARKET MOOD</span><h2>当前股票池情绪</h2><p>统计基于当前筛选列表，不等同于全市场情绪。</p></div><ReactECharts key={theme} option={gaugeOption} style={{ height: 210, width: 260 }} /></article>
         <article className="panel mood-stats"><div className="mood-cell positive"><span>利好事件</span><strong>{counts['利好'] ?? 0}</strong><small>模型判断偏正向</small></div><div className="mood-cell neutral"><span>中性事件</span><strong>{counts['中性'] ?? 0}</strong><small>影响暂不明确</small></div><div className="mood-cell negative"><span>利空事件</span><strong>{counts['利空'] ?? 0}</strong><small>模型判断偏负向</small></div><div className="mood-cell pending"><span>待分析</span><strong>{counts['待分析'] ?? 0}</strong><small>等待模型流水线</small></div></article>
       </section>
       <section className="panel news-panel">
