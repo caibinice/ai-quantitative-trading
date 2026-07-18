@@ -1,0 +1,38 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    auth_basic "AI Quant Research Cockpit";
+    auth_basic_user_file __APP_ROOT__/shared/htpasswd;
+
+    location ^~ /.well-known/acme-challenge/ {
+        auth_basic off;
+        root __APP_ROOT__/shared/acme;
+        default_type text/plain;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /docs {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+    }
+
+    location = /openapi.json {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        root __APP_ROOT__/current/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+}

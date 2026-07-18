@@ -17,7 +17,7 @@
 - Walk-forward：滚动训练窗口选择参数，最终只拼接下一测试窗口的样本外收益。
 - MySQL 任务队列：采集、AI 分析、质量检查和样本外实验由独立 Worker 执行，支持进度、重试和取消。
 - 数据质量告警：检查 OHLC、价格跳变、交易日缺口、过期数据、点时财务/基准覆盖和情绪分数范围。
-- 学习学院：五阶段十章节，从 Python 时间序列到因子、舆情、Walk-forward 和毕业研究，包含 Checklist、小测验与 5 个可运行 Demo。
+- 学习学院：五阶段十章节，从 Python 时间序列到因子、舆情、Walk-forward 和毕业研究，包含 Checklist、小测验与 5 个可运行 Demo；进度同步到 MySQL，可跨设备继续、取消勾选或一键重置。
 - 定时任务：可按 Cron 配置行情、舆情、评分、基础数据和质量检查；默认关闭，避免初次启动就请求外部数据。
 - 演示模式：可生成明确标注的合成数据，不依赖实时源也能学习完整流程。
 
@@ -41,6 +41,7 @@ flowchart LR
 - 前端：React、TypeScript、Vite、ECharts。
 - 大模型：直接调用 OpenAI Chat Completions 兼容接口；模型失败时回退到可复现的词典规则。
 - 队列：数据库行锁认领，不要求额外部署 Redis；当前 MariaDB 兼容模式适合单 Worker。
+- 生产部署：Nginx + systemd + Python venv，不使用 Docker；前端在本机构建后上传，适合 2 核 2GB 小服务器。
 
 ## 五分钟启动
 
@@ -61,6 +62,86 @@ pwsh -File scripts/dev.ps1
 - API 文档：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 停止时在运行窗口按 `Ctrl+C`。
+
+## 学习手册怎么用
+
+打开 `/learn` 是总路线页，进入章节后可以阅读知识梗概、运行 Demo、勾选 Checklist、完成 3 题小测验，并用页面底部的“上一章 / 下一章”连续学习。
+
+| 阶段 | 章节 | 目标 |
+| --- | --- | --- |
+| 1 建立地图 | 量化、AI 量化与 Web3；项目导览 | 分清概念并读懂研究闭环 |
+| 2 掌握数据语言 | Python 迁移；NumPy/pandas | 从 Java/JS/MATLAB 迁移到科学 Python |
+| 3 构建可信策略 | 行情财务；因子回测 | 掌握收益风险、时点、成本与信号延迟 |
+| 4 加入 AI 与验证 | 舆情大模型；Walk-forward | 把文本变成可审计因子并检查过拟合 |
+| 5 完成研究系统 | 工程治理；毕业项目 | 独立交付可复现、可证伪的双因子研究 |
+
+进度保存逻辑：
+
+- 浏览器先保留本地缓存，API 可用时同步到 MySQL 表 `aq_learning_progress`。
+- 第一次从旧版本升级时，如果 MySQL 尚无记录，会把本地已有进度迁移到远程。
+- 换电脑或浏览器登录同一个站点后，会读取 MySQL 中的 Checklist 和测验最高分。
+- Checklist 可以再次点击取消；章节底部可返回上一章；总路线页“重置进度”会同时清空 MySQL 与本地缓存。
+- 页面显示“已同步到 MySQL”才表示远程保存完成；断网时会显示“离线缓存”。
+
+Demo 也可以在项目根目录直接运行：
+
+```powershell
+.\.venv\Scripts\python.exe learning\examples\01_python_bridge.py
+.\.venv\Scripts\python.exe learning\examples\02_pandas_timeseries.py
+.\.venv\Scripts\python.exe learning\examples\03_signal_delay.py
+.\.venv\Scripts\python.exe learning\examples\04_sentiment_factor.py
+.\.venv\Scripts\python.exe learning\examples\05_walk_forward.py
+```
+
+## 远程一键部署
+
+当前生产方案面向 2 核 2GB Linux 服务器，使用 Nginx、单进程 FastAPI、轻量常驻 Worker 和 systemd。Worker 空闲时只加载队列层；处理 pandas/AKShare 重任务后空闲 30 秒会退出，再由 systemd 拉起一个干净的轻量进程，避免长期占用内存。服务器无需安装 Node.js，也不运行 Docker。
+
+先在不会提交到 Git 的 `credentials.txt` 中配置：
+
+```ini
+[remote.ssh]
+host=服务器公网 IP
+port=22
+user=普通 SSH 用户
+password=SSH 密码
+root_password=可通过 su 使用的 root 密码
+```
+
+首次及后续发布都使用同一条命令：
+
+```powershell
+pwsh -File scripts/deploy.ps1
+```
+
+它会依次完成：
+
+1. 运行 Ruff、pytest 和前端生产构建；
+2. 只打包源码与 `frontend/dist`，不会上传 `.env`、`credentials.txt` 或 `.deploy`；
+3. 在服务器安装原生 Python 3.11 与 Nginx，创建 1GB 低优先级防 OOM swap；
+4. 写入 systemd API/Worker 服务并连接 `credentials.txt` 中的同一个远程 MySQL；
+5. 为公网 IP 申请 Let’s Encrypt 受信任短期证书，80 自动跳转 443；
+6. 每天两次检查证书续期，成功后热加载 Nginx；
+7. 执行 API 健康检查；失败时自动恢复上一个 release。
+
+Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用 `ai-quant-cert-renew.timer` 太久。第一次发布会生成独立网页账号，保存在本机、不提交 Git 的：
+
+```text
+.deploy/web-auth.json
+```
+
+浏览器访问 `https://服务器公网IP`，输入其中的用户名和密码。HTTP Basic Auth 只在 HTTPS 上发送；80 端口只负责 ACME 验证和跳转。API 只监听服务器 `127.0.0.1:8000`，外网不能绕过 Nginx 登录。
+
+常用运维命令：
+
+```powershell
+pwsh -File scripts/status.ps1   # 查看服务和日志
+pwsh -File scripts/restart.ps1  # 一键重启
+pwsh -File scripts/stop.ps1     # 停止网页、API、Worker 和续期定时器
+pwsh -File scripts/start.ps1    # 一键恢复
+```
+
+服务器只需要安全组放行 80 和 443；8080 不使用。发布文件位于 `/opt/ai-quantitative-trading`，保留最近 5 个 release；应用密钥只保存在服务器 `shared/app.env`。
 
 ## 配置数据库与大模型
 
@@ -186,7 +267,7 @@ INFRASTRUCTURE_CRON=10 8 * * 6
 DATA_QUALITY_CRON=10 20 * * 1-5
 ```
 
-时间使用 `Asia/Shanghai`。开发模式的自动重载可能启动多个进程，不建议在 `--reload` 下开启调度器；正式运行请用单实例进程或把调度器拆成独立 Worker。
+时间使用 `Asia/Shanghai`。开发模式的自动重载可能启动多个进程，不建议在 `--reload` 下开启调度器；远程轻量部署默认开启单实例调度器，调度器只把任务放入 MySQL，独立 Worker 负责执行。
 
 ## 验证
 
@@ -226,7 +307,8 @@ ai-quantitative-trading/
 │   ├── components/
 │   └── pages/                    # 含样本外、任务中心和数据治理
 ├── learning/                     # 学习手册、毕业模板和 5 个可运行实验
-├── scripts/                     # PowerShell 安装、启动、检查
+├── deploy/                       # Nginx、systemd 和远程安装模板
+├── scripts/                      # 本地开发、检查及一键远程运维
 ├── .env.example
 └── README.md
 ```
@@ -238,6 +320,8 @@ ai-quantitative-trading/
 - 当前回测按收盘到收盘近似执行，未建模涨跌停、停牌、无法成交、印花税差异和容量冲击。
 - 免费业绩报表接口按报告期抓取全市场后过滤股票池，建议放入队列并控制回溯季度数量。
 - 当前远程 MariaDB 使用普通行锁认领任务；默认单 Worker，增加多个 Worker 会安全串行等待但吞吐不会线性提升。
+- 单用户网页使用 Nginx Basic Auth；若未来开放给多人，需要升级为应用级账号、权限和审计系统。
+- 公网 IP 证书有效期很短，依赖 systemd timer 自动续期；更换公网 IP 后需要重新发布并签发证书。
 - 合成演示数据只用于验证界面和流程，绝不能用于评价策略有效性。
 - 情绪模型会犯错；应抽样复核，并保存模型版本、提示词和原文链接。
 

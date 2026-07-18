@@ -42,6 +42,7 @@ export function LearningHome() {
     summary,
     chapterCompleted,
     resetProgress,
+    syncState,
   } = useLearningProgress()
 
   const handleReset = () => {
@@ -91,6 +92,12 @@ export function LearningHome() {
           <div className="learning-progress-meta">
             <span><b>{summary.completedChecklist}</b> / {totalChecklistItems} Checklist</span>
             <span><b>{summary.passedQuizzes}</b> / {learningChapters.length} 测验通过</span>
+            <span className={`progress-sync ${syncState}`}>
+              {syncState === 'loading' && '正在读取云端进度'}
+              {syncState === 'saving' && '正在保存到 MySQL'}
+              {syncState === 'synced' && '已同步到 MySQL'}
+              {syncState === 'offline' && '离线缓存，稍后重试'}
+            </span>
           </div>
         </div>
       </section>
@@ -99,7 +106,7 @@ export function LearningHome() {
         {[
           { icon: Route, label: '学习阶段', value: '5', note: '基础到成果' },
           { icon: BookOpenCheck, label: '核心章节', value: '10', note: '每章独立子页面' },
-          { icon: CheckCircle2, label: '行动清单', value: String(totalChecklistItems), note: '本地保存进度' },
+          { icon: CheckCircle2, label: '行动清单', value: String(totalChecklistItems), note: '跨设备保存进度' },
           { icon: Clock3, label: '建议节奏', value: '8–10', note: '周 · 每周 5–8 小时' },
         ].map(({ icon: Icon, label, value, note }) => (
           <article className="panel learning-stat" key={label}>

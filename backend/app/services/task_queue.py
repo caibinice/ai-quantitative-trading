@@ -18,13 +18,6 @@ from app.schemas import (
     SyncRequest,
     WalkForwardRequest,
 )
-from app.services.backtest import run_backtest_from_db
-from app.services.data_quality import run_data_quality_checks
-from app.services.infrastructure import quarter_ends, sync_research_infrastructure
-from app.services.pipeline import sync_market_data
-from app.services.scoring import calculate_scores
-from app.services.sentiment import SentimentAnalyzer
-from app.services.walkforward import run_walk_forward_from_db
 
 SUPPORTED_TASKS = {
     "market_sync",
@@ -140,6 +133,8 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
     watchlist, parameters = _active_strategy(db)
     payload = task.payload or {}
     if task.task_type == "market_sync":
+        from app.services.pipeline import sync_market_data
+
         request = SyncRequest(**payload)
         symbols = request.symbols or watchlist
         end_date = request.end_date or date.today()
@@ -155,6 +150,8 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
             request.include_notices,
         )
     if task.task_type == "infrastructure_sync":
+        from app.services.infrastructure import quarter_ends, sync_research_infrastructure
+
         request = InfrastructureSyncRequest(**payload)
         symbols = request.symbols or watchlist
         end_date = request.end_date or date.today()
@@ -170,11 +167,15 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
             progress=lambda value, message: _set_progress(db, task.id, value, message),
         )
     if task.task_type == "sentiment_analysis":
+        from app.services.sentiment import SentimentAnalyzer
+
         request = AnalyzeRequest(**payload)
         _set_progress(db, task.id, 0.1, "正在分析待处理事件")
         count = SentimentAnalyzer().analyze_pending(db, request.limit, request.force)
         return {"analyzed": count}
     if task.task_type == "factor_scoring":
+        from app.services.scoring import calculate_scores
+
         request = ScoreRequest(**payload)
         symbols = request.symbols or watchlist
         as_of = request.as_of or date.today()
@@ -182,6 +183,8 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
         items = calculate_scores(db, symbols, as_of, parameters)
         return {"score_date": as_of.isoformat(), "count": len(items)}
     if task.task_type == "backtest":
+        from app.services.backtest import run_backtest_from_db
+
         request = BacktestRequest(**payload)
         if not request.symbols:
             request.symbols = watchlist
@@ -189,6 +192,8 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
         run = run_backtest_from_db(db, request)
         return {"run_id": run.id, "metrics": run.metrics}
     if task.task_type == "walk_forward":
+        from app.services.walkforward import run_walk_forward_from_db
+
         request = WalkForwardRequest(**payload)
         if not request.symbols:
             request.symbols = watchlist
@@ -196,6 +201,8 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
         run = run_walk_forward_from_db(db, request)
         return {"run_id": run.id, "metrics": run.metrics, "windows": len(run.windows)}
     if task.task_type == "data_quality":
+        from app.services.data_quality import run_data_quality_checks
+
         request = DataQualityRequest(**payload)
         symbols = request.symbols or watchlist
         _set_progress(db, task.id, 0.2, "正在执行数据质量规则")

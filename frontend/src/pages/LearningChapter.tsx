@@ -31,7 +31,13 @@ export function LearningChapter() {
 }
 
 function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
-  const { progress, chapterCompleted, toggleChecklist, saveQuizScore } = useLearningProgress()
+  const {
+    progress,
+    chapterCompleted,
+    toggleChecklist,
+    saveQuizScore,
+    syncState,
+  } = useLearningProgress()
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [submitted, setSubmitted] = useState(false)
   const stage = learningStages.find((item) => item.id === chapter.stage)
@@ -94,7 +100,11 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
           <div className="chapter-progress-line">
             <i style={{ width: `${chapterPercent}%` }} />
           </div>
-          <small>{completed}/{chapter.checklist.length} 项完成 · {chapterPercent}%</small>
+          <small>
+            {completed}/{chapter.checklist.length} 项完成 · {chapterPercent}%
+            {' · '}
+            {syncState === 'synced' ? '云端已同步' : syncState === 'offline' ? '离线缓存' : '同步中'}
+          </small>
         </header>
 
         <section className="chapter-objective panel">

@@ -129,6 +129,15 @@ class StrategyConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
+class LearningProgress(Base):
+    __tablename__ = "aq_learning_progress"
+
+    profile_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    completed: Mapped[list[str]] = mapped_column(JSON, default=list)
+    quiz_scores: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class FactorScore(Base):
     __tablename__ = "aq_factor_scores"
     __table_args__ = (

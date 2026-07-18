@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -134,3 +134,32 @@ class InfrastructureSyncRequest(BaseModel):
 class DataQualityRequest(BaseModel):
     symbols: list[str] = Field(default_factory=list)
     benchmark_symbol: str = "000300"
+
+
+class LearningProgressPayload(BaseModel):
+    completed: list[str] = Field(default_factory=list, max_length=500)
+    quiz_scores: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("completed")
+    @classmethod
+    def normalize_completed(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(item.strip() for item in value if item.strip()))
+
+    @field_validator("quiz_scores")
+    @classmethod
+    def validate_quiz_scores(cls, value: dict[str, int]) -> dict[str, int]:
+        if len(value) > 100:
+            raise ValueError("测验成绩数量不能超过 100")
+        normalized: dict[str, int] = {}
+        for key, score in value.items():
+            chapter_id = key.strip()
+            if not chapter_id:
+                raise ValueError("章节 ID 不能为空")
+            if score < 0 or score > 100:
+                raise ValueError("测验成绩必须在 0 到 100 之间")
+            normalized[chapter_id] = score
+        return normalized
+
+
+class LearningProgressResponse(LearningProgressPayload):
+    updated_at: datetime | None = None

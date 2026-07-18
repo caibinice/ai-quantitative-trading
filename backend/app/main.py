@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.infrastructure import router as infrastructure_router
+from app.api.learning import router as learning_router
 from app.api.router import router
 from app.api.tasks import router as tasks_router
 from app.api.walkforward import router as walkforward_router
@@ -41,6 +42,7 @@ app.include_router(router, prefix=settings.api_prefix)
 app.include_router(tasks_router, prefix=settings.api_prefix)
 app.include_router(infrastructure_router, prefix=settings.api_prefix)
 app.include_router(walkforward_router, prefix=settings.api_prefix)
+app.include_router(learning_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

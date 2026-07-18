@@ -24,6 +24,7 @@ logs/
 outputs/
 output/
 .playwright-cli/
+.deploy/
 .coverage
 htmlcov/
 
