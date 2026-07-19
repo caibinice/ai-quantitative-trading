@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.automation import router as automation_router
 from app.api.infrastructure import router as infrastructure_router
 from app.api.learning import router as learning_router
 from app.api.router import router
@@ -44,6 +45,7 @@ app.include_router(tasks_router, prefix=settings.api_prefix)
 app.include_router(infrastructure_router, prefix=settings.api_prefix)
 app.include_router(walkforward_router, prefix=settings.api_prefix)
 app.include_router(learning_router, prefix=settings.api_prefix)
+app.include_router(automation_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

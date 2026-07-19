@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  Download,
   ExternalLink,
   FileCode2,
   FlaskConical,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { apiUrl } from '../api'
 import {
   chapterById,
   learningChapters,
@@ -119,12 +121,13 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
           </div>
           <div className="concept-grid">
             {chapter.concepts.map((concept, index) => (
-              <article className="panel concept-card" key={concept.title}>
+              <Link className="panel concept-card" to={`/learn/${chapter.id}/concepts/${index}`} key={concept.title}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <h3>{concept.title}</h3>
                 <p>{concept.summary}</p>
                 <ul>{concept.points.map((point) => <li key={point}>{point}</li>)}</ul>
-              </article>
+                <strong className="concept-enter">进入详情 <ArrowRight size={13} /></strong>
+              </Link>
             ))}
           </div>
         </section>
@@ -147,10 +150,16 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
             </div>
             <div>
               {chapter.projectFiles.map((file) => (
-                <div key={file.path}>
+                <a
+                  href={downloadUrl(file.path)}
+                  download
+                  title={`下载 ${file.path}`}
+                  key={file.path}
+                >
                   <FileCode2 size={15} />
                   <p><code>{file.path}</code><span>{file.reason}</span></p>
-                </div>
+                  <Download size={14} />
+                </a>
               ))}
             </div>
           </article>
@@ -161,7 +170,9 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
             <span className="section-kicker">RUNNABLE LAB</span>
             <h2><FlaskConical size={18} /> 本章动手实验</h2>
             <p>{chapter.demo.summary}</p>
-            <div className="demo-file"><FileCode2 size={14} /> {chapter.demo.file}</div>
+            <a className="demo-file" href={downloadUrl(chapter.demo.file)} download>
+              <FileCode2 size={14} /> {chapter.demo.file}<Download size={13} />
+            </a>
             <div className="demo-command"><TerminalSquare size={15} /><code>{chapter.demo.command}</code></div>
           </div>
           <pre><code>{chapter.demo.snippet}</code></pre>
@@ -266,4 +277,9 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
       </main>
     </div>
   )
+}
+
+function downloadUrl(path: string): string {
+  const encoded = path.split('/').map(encodeURIComponent).join('/')
+  return apiUrl(`/learning/files/${encoded}`)
 }

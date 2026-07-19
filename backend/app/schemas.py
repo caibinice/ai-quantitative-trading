@@ -163,3 +163,17 @@ class LearningProgressPayload(BaseModel):
 
 class LearningProgressResponse(LearningProgressPayload):
     updated_at: datetime | None = None
+
+
+class AutomationSettingsPayload(BaseModel):
+    news_analysis_enabled: bool = True
+    news_analysis_interval_hours: int = Field(default=6, ge=1, le=48)
+
+
+class AutomationSettingsResponse(AutomationSettingsPayload):
+    next_run_at: datetime | None = None
+    model: str
+    thinking_enabled: bool
+    reasoning_effort: str
+    backup_key_configured: bool
+    updated_at: datetime | None = None

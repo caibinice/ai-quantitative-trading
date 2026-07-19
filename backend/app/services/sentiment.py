@@ -85,21 +85,27 @@ class SentimentAnalyzer:
 正文：{content[:6000]}
 """
         url = f"{self.settings.llm_base_url.rstrip('/')}/chat/completions"
-        response = httpx.post(
-            url,
-            headers={"Authorization": f"Bearer {self.settings.llm_api_key}"},
-            json={
-                "model": self.settings.llm_model,
-                "temperature": 0,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {"role": "system", "content": "你输出严格 JSON，结论保持克制。"},
-                    {"role": "user", "content": prompt},
-                ],
-            },
-            timeout=self.settings.llm_timeout_seconds,
-        )
-        response.raise_for_status()
+        body: dict[str, Any] = {
+            "model": self.settings.llm_model,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": "你输出严格 JSON，结论保持克制。"},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if self.settings.llm_thinking_enabled:
+            body["thinking"] = {"type": "enabled"}
+            body["reasoning_effort"] = self.settings.llm_reasoning_effort
+        else:
+            body["temperature"] = 0
+
+        try:
+            response = self._post_llm(url, body, self.settings.llm_api_key)
+        except httpx.HTTPError as exc:
+            backup = self.settings.llm_api_key_backup
+            if not backup or backup == self.settings.llm_api_key or not _can_retry_with_backup(exc):
+                raise
+            response = self._post_llm(url, body, backup)
         payload = _extract_json(response.json()["choices"][0]["message"]["content"])
         score = _clamp(payload.get("score", 0), -1, 1)
         label = str(payload.get("label", "中性"))
@@ -113,6 +119,18 @@ class SentimentAnalyzer:
             rationale=str(payload.get("rationale", ""))[:1000],
             model=self.settings.llm_model,
         )
+
+    def _post_llm(
+        self, url: str, body: dict[str, Any], api_key: str
+    ) -> httpx.Response:
+        response = httpx.post(
+            url,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+            timeout=self.settings.llm_timeout_seconds,
+        )
+        response.raise_for_status()
+        return response
 
     def _heuristic(self, title: str, content: str) -> SentimentResult:
         text = f"{title} {content}"
@@ -149,3 +167,13 @@ class SentimentAnalyzer:
             db.add(analysis)
         db.commit()
         return len(items)
+
+
+def _can_retry_with_backup(exc: Exception) -> bool:
+    if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {401, 402, 403, 408, 409, 429} or (
+            exc.response.status_code >= 500
+        )
+    return False

@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Clock3, ListTodo, Play, RefreshCcw, RotateCcw, XCircle } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import { AutomationPanel } from '../components/AutomationPanel'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
 import type { ResearchTask } from '../types'
@@ -63,6 +64,7 @@ export function Tasks() {
   return <>
     <PageHeader eyebrow="Persistent task queue" title="研究任务中心" description="耗时采集、AI 分析和样本外实验进入 MySQL 持久化队列，由独立 Worker 执行；API 不再长时间阻塞。" actions={<button className="button" onClick={load}><RefreshCcw size={16} />刷新</button>} />
     {error && <div className="inline-alert">{error}</div>}
+    <AutomationPanel location="tasks" />
     <section className="stat-grid task-stats">{statItems.map(({ key, label, icon: Icon, tone }) => <article className="stat-card" key={key}><div className={`icon-box ${tone}`}><Icon size={20} className={key === 'running' && counts[key] ? 'spin' : ''} /></div><span>{label}</span><strong>{counts[key] ?? 0}<small>项</small></strong><div className="stat-rule" /></article>)}</section>
     <section className="panel quick-task-panel"><div className="panel-head"><div><span className="section-kicker">QUICK ACTIONS</span><h2>常用队列任务</h2></div><ListTodo size={20} /></div><div className="quick-task-grid">{[
       ['infrastructure_sync', '同步研究基础数据', '交易日历、沪深300、点时财务'],

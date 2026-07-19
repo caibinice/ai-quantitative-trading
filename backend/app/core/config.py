@@ -70,14 +70,16 @@ class Settings(BaseSettings):
     llm_enabled: bool = True
     llm_base_url: str = ""
     llm_api_key: str = ""
+    llm_api_key_backup: str = ""
     llm_model: str = ""
+    llm_thinking_enabled: bool = True
+    llm_reasoning_effort: str = "high"
     llm_timeout_seconds: int = 45
 
     scheduler_enabled: bool = False
     default_watchlist: str = DEFAULT_WATCHLIST
     upstream_proxy: str = ""
     price_sync_cron: str = "20 18 * * 1-5"
-    news_sync_cron: str = "0 */2 * * *"
     score_cron: str = "40 19 * * 1-5"
     infrastructure_cron: str = "10 8 * * 6"
     data_quality_cron: str = "10 20 * * 1-5"
@@ -105,8 +107,12 @@ class Settings(BaseSettings):
             self.llm_base_url = llm.get("base-url", "https://api.deepseek.com")
         if not self.llm_api_key:
             self.llm_api_key = llm.get("api-key", "")
+        if not self.llm_api_key_backup:
+            self.llm_api_key_backup = llm.get("api-key-backup", "")
         if not self.llm_model:
-            self.llm_model = llm.get("model", "deepseek-chat")
+            self.llm_model = llm.get("model", "deepseek-v4-pro")
+        if self.llm_reasoning_effort not in {"high", "max"}:
+            self.llm_reasoning_effort = "high"
 
         if not self.database_url:
             self.database_url = f"sqlite:///{ROOT_DIR / 'ai_quant.db'}"

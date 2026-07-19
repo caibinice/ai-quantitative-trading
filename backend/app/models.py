@@ -138,6 +138,15 @@ class LearningProgress(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
+class AutomationSetting(Base):
+    __tablename__ = "aq_automation_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    news_analysis_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    news_analysis_interval_hours: Mapped[int] = mapped_column(Integer, default=6)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class FactorScore(Base):
     __tablename__ = "aq_factor_scores"
     __table_args__ = (

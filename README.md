@@ -9,7 +9,7 @@
 - 研究总览：股票池、日线、舆情数量、AI 分析覆盖率、领先评分和流水线状态。
 - 行情财务：日 K、成交量、当日切片和按报告期保存的财务指标。
 - AI 选股：行情动量、财务质量、舆情情绪三个可解释分项及综合排名。
-- 舆情雷达：新闻/公告时间线、利好/中性/利空、置信度、摘要和判断理由。
+- 舆情雷达：新闻/公告时间线、利好/中性/利空、置信度、摘要和判断理由；自动流水线默认每 6 小时运行，页面修改间隔后即时生效。
 - 策略实验室：可视化配置股票池、因子权重、窗口、门槛、持仓数量、手续费和滑点。
 - 动态股票池：默认 15 只跨行业大盘股，可用数量控件在 1–30 只间自动扩缩，也可直接编辑代码。
 - 明暗主题：顶部一键切换明亮/暗黑风格，主题会保存在浏览器，ECharts 图表同步换色。
@@ -19,8 +19,8 @@
 - Walk-forward：滚动训练窗口选择参数，最终只拼接下一测试窗口的样本外收益。
 - MySQL 任务队列：采集、AI 分析、质量检查和样本外实验由独立 Worker 执行，支持进度、重试和取消。
 - 数据质量告警：检查 OHLC、价格跳变、交易日缺口、过期数据、点时财务/基准覆盖和情绪分数范围。
-- 学习学院：五阶段十章节，从 Python 时间序列到因子、舆情、Walk-forward 和毕业研究，包含 Checklist、小测验与 5 个可运行 Demo；进度同步到 MySQL，可跨设备继续、取消勾选或一键重置。
-- 定时任务：可按 Cron 配置行情、舆情、评分、基础数据和质量检查；默认关闭，避免初次启动就请求外部数据。
+- 学习学院：五阶段十章节、30 个可点击知识详情，从 Python 时间序列到因子、舆情、Walk-forward 和毕业研究；每个知识点包含图文讲解、项目例子、误区、练习和源码下载，另有 Checklist、小测验与 5 个可运行 Demo。进度同步到 MySQL，可跨设备继续、取消勾选或一键重置。
+- 定时任务：行情、评分、基础数据和质量检查按 Cron 运行；新闻公告 + AI 情绪流水线使用 MySQL 持久化间隔配置，默认每 6 小时运行。
 - 演示模式：可生成明确标注的合成数据，不依赖实时源也能学习完整流程。
 
 ## 技术结构
@@ -67,7 +67,7 @@ pwsh -File scripts/dev.ps1
 
 ## 学习手册怎么用
 
-打开 `/quant/learn` 是总路线页，进入章节后可以阅读知识梗概、运行 Demo、勾选 Checklist、完成 3 题小测验，并用页面底部的“上一章 / 下一章”连续学习。
+打开 `/quant/learn` 是总路线页。进入章节后，点击任意“知识梗概”卡片可以打开独立详情页，沿“心智模型 → 深度讲解 → 流程图 → 项目例子 → 常见误区 → 动手练习”学习；对应源码和 Demo 可直接下载。回到章节后再运行 Demo、勾选 Checklist、完成 3 题小测验，并用页面底部的“上一章 / 下一章”连续学习。
 
 | 阶段 | 章节 | 目标 |
 | --- | --- | --- |
@@ -164,7 +164,10 @@ DATABASE_URL=mysql+pymysql://user:password@host:3306/database?charset=utf8mb4
 LLM_ENABLED=true
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=your-key
-LLM_MODEL=deepseek-chat
+LLM_API_KEY_BACKUP=your-backup-key
+LLM_MODEL=deepseek-v4-pro
+LLM_THINKING_ENABLED=true
+LLM_REASONING_EFFORT=high
 ```
 
 本工作区还支持读取根目录、不会被 Git 提交的 `credentials.txt`：
@@ -181,7 +184,8 @@ charset=utf8mb4
 [deepseek.api]
 base-url=https://api.deepseek.com
 api-key=your-key
-model=deepseek-chat
+api-key-backup=your-backup-key
+model=deepseek-v4-pro
 ```
 
 所有项目表统一使用 `aq_` 前缀，因此可以安全复用一个已有数据库。真实密钥只能放在 `.env`、系统环境变量或 `credentials.txt`，这些文件已加入 `.gitignore`。
@@ -220,7 +224,7 @@ AKShare 是开源接口库，但它聚合的源站接口可能变更、限流或
 }
 ```
 
-模型提示词要求只基于输入文本、不补充外部事实、不提供买卖建议。调用失败时使用词典规则，数据库会记录实际模型名，避免把降级结果误认为大模型输出。
+模型提示词要求只基于输入文本、不补充外部事实、不提供买卖建议。默认使用 `deepseek-v4-pro` Thinking Mode（`thinking.type=enabled`、`reasoning_effort=high`）；主 Key 在配额不足、鉴权失败、超时或服务端不可用时自动尝试备用 Key，两者均失败才使用词典规则。数据库会记录实际模型名，避免把降级结果误认为大模型输出。参数用法参见 [DeepSeek Thinking Mode 官方文档](https://api-docs.deepseek.com/guides/thinking_mode)。
 
 ### 2. AI 选股排名
 
@@ -262,18 +266,17 @@ applied_weights = targets.shift(1).fillna(0.0)
 
 ## 定时任务
 
-默认关闭。确认股票池后在 `.env` 中启用：
+开发环境默认关闭。确认股票池后在 `.env` 中启用：
 
 ```dotenv
 SCHEDULER_ENABLED=true
 PRICE_SYNC_CRON=20 18 * * 1-5
-NEWS_SYNC_CRON=0 */2 * * *
 SCORE_CRON=40 19 * * 1-5
 INFRASTRUCTURE_CRON=10 8 * * 6
 DATA_QUALITY_CRON=10 20 * * 1-5
 ```
 
-时间使用 `Asia/Shanghai`。开发模式的自动重载可能启动多个进程，不建议在 `--reload` 下开启调度器；远程轻量部署默认开启单实例调度器，调度器只把任务放入 MySQL，独立 Worker 负责执行。
+时间使用 `Asia/Shanghai`。新闻公告同步与情绪分析默认为每 6 小时执行一次，间隔和启停状态保存在 `aq_automation_settings`；可在“舆情雷达”或“任务中心”修改 1–48 小时，保存后 APScheduler 立即重新排期，不需要重启。开发模式的自动重载可能启动多个进程，不建议在 `--reload` 下开启调度器；远程轻量部署默认开启单实例调度器，调度器只把任务放入 MySQL，独立 Worker 负责执行。
 
 ## 验证
 
@@ -294,6 +297,18 @@ pwsh -File scripts/check.ps1
 - OHLC/交易日缺口质量规则；
 - Walk-forward 最终曲线只包含测试窗口。
 - 学习手册中的 5 个 Python Demo 均可独立运行。
+- 自动舆情配置默认 6 小时并持久化到 MySQL；
+- DeepSeek Thinking 请求和主/备用 Key 回退；
+- 学习源码下载白名单、秘密文件与路径穿越拦截。
+
+启动本地 API 和前端后，还可以执行真实浏览器回归：
+
+```powershell
+Set-Location frontend
+npm run test:e2e
+```
+
+Playwright 会验证明亮主题关键页面、动态页签标题、全部 10 章/30 个知识详情、源码下载和舆情自动化配置。
 
 ## 目录
 

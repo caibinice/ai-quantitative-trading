@@ -13,7 +13,8 @@ const Tasks = lazy(() => import('./pages/Tasks').then((module) => ({ default: mo
 const DataQuality = lazy(() => import('./pages/DataQuality').then((module) => ({ default: module.DataQuality })))
 const LearningHome = lazy(() => import('./pages/LearningHome').then((module) => ({ default: module.LearningHome })))
 const LearningChapter = lazy(() => import('./pages/LearningChapter').then((module) => ({ default: module.LearningChapter })))
+const LearningConceptDetail = lazy(() => import('./pages/LearningConceptDetail').then((module) => ({ default: module.LearningConceptDetail })))
 
 export default function App() {
-  return <Layout><Suspense fallback={<Loading label="加载研究模块…" />}><Routes><Route path="/" element={<Dashboard />} /><Route path="/learn" element={<LearningHome />} /><Route path="/learn/:chapterId" element={<LearningChapter />} /><Route path="/market" element={<Market />} /><Route path="/rankings" element={<Rankings />} /><Route path="/sentiment" element={<Sentiment />} /><Route path="/strategy" element={<Strategy />} /><Route path="/walk-forward" element={<WalkForward />} /><Route path="/tasks" element={<Tasks />} /><Route path="/data-quality" element={<DataQuality />} /></Routes></Suspense></Layout>
+  return <Layout><Suspense fallback={<Loading label="加载研究模块…" />}><Routes><Route path="/" element={<Dashboard />} /><Route path="/learn" element={<LearningHome />} /><Route path="/learn/:chapterId" element={<LearningChapter />} /><Route path="/learn/:chapterId/concepts/:conceptIndex" element={<LearningConceptDetail />} /><Route path="/market" element={<Market />} /><Route path="/rankings" element={<Rankings />} /><Route path="/sentiment" element={<Sentiment />} /><Route path="/strategy" element={<Strategy />} /><Route path="/walk-forward" element={<WalkForward />} /><Route path="/tasks" element={<Tasks />} /><Route path="/data-quality" element={<DataQuality />} /></Routes></Suspense></Layout>
 }
