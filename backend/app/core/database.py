@@ -18,6 +18,10 @@ engine = create_engine(
     settings.database_url,
     echo=settings.database_echo,
     pool_pre_ping=True,
+    # Remote MySQL providers can close an idle TCP connection while a worker is
+    # busy calling an upstream API. Recycle pooled connections before they grow
+    # old; long-running services still validate every checkout with pre-ping.
+    pool_recycle=300,
     connect_args=connect_args,
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

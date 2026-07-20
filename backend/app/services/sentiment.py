@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.models import NewsItem, SentimentAnalysis
@@ -148,24 +148,52 @@ class SentimentAnalyzer:
             model="heuristic-v1",
         )
 
-    def analyze_pending(self, db: Session, limit: int = 50, force: bool = False) -> int:
-        query = select(NewsItem).options(selectinload(NewsItem.sentiment)).order_by(
-            NewsItem.published_at.desc()
-        )
+    def analyze_pending(
+        self,
+        db: Session,
+        limit: int = 50,
+        force: bool = False,
+        write_batch_size: int = 10,
+    ) -> int:
+        if write_batch_size < 1:
+            raise ValueError("write_batch_size 必须大于 0")
+        query = select(NewsItem).order_by(NewsItem.published_at.desc())
         if not force:
             query = query.where(~NewsItem.sentiment.has())
         items = list(db.scalars(query.limit(limit)).all())
-        for item in items:
-            result = self.analyze(item.title, item.content, item.kind)
-            analysis = item.sentiment or SentimentAnalysis(news_id=item.id)
-            analysis.label = result.label
-            analysis.score = result.score
-            analysis.confidence = result.confidence
-            analysis.summary = result.summary
-            analysis.rationale = result.rationale
-            analysis.model = result.model
-            db.add(analysis)
+        pending = [(item.id, item.title, item.content, item.kind) for item in items]
+
+        # The LLM phase can take many minutes. End the read transaction now so
+        # the worker does not keep a remote MySQL connection checked out and
+        # discover that it was reset only when the final INSERT starts.
         db.commit()
+
+        for offset in range(0, len(pending), write_batch_size):
+            batch = pending[offset : offset + write_batch_size]
+            results = [
+                (news_id, self.analyze(title, content, kind))
+                for news_id, title, content, kind in batch
+            ]
+
+            news_ids = [news_id for news_id, _result in results]
+            existing = {
+                item.news_id: item
+                for item in db.scalars(
+                    select(SentimentAnalysis).where(SentimentAnalysis.news_id.in_(news_ids))
+                ).all()
+            }
+            for news_id, result in results:
+                analysis = existing.get(news_id) or SentimentAnalysis(news_id=news_id)
+                analysis.label = result.label
+                analysis.score = result.score
+                analysis.confidence = result.confidence
+                analysis.summary = result.summary
+                analysis.rationale = result.rationale
+                analysis.model = result.model
+                db.add(analysis)
+            # Save partial progress in small statements. If a later upstream or
+            # database call fails, earlier analyzed batches remain available.
+            db.commit()
         return len(items)
 
 

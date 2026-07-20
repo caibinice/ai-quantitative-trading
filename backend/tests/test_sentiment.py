@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import httpx
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.services.sentiment import SentimentAnalyzer, _extract_json
+from app.core.database import Base
+from app.models import NewsItem, SentimentAnalysis
+from app.services.sentiment import SentimentAnalyzer, SentimentResult, _extract_json
 
 
 def test_extract_json_from_markdown_fence() -> None:
@@ -78,3 +84,43 @@ def test_deepseek_thinking_request_uses_backup_key_after_quota_error(monkeypatch
     assert calls[0]["json"]["thinking"] == {"type": "enabled"}
     assert calls[0]["json"]["reasoning_effort"] == "high"
     assert "temperature" not in calls[0]["json"]
+
+
+def test_pending_analysis_releases_read_transaction_and_writes_in_batches(
+    monkeypatch,
+) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine, expire_on_commit=False) as db:
+        db.add_all(
+            [
+                NewsItem(
+                    symbol="600519",
+                    kind="news",
+                    title=f"测试新闻 {index}",
+                    content="公司经营信息",
+                    source="test",
+                    source_url="",
+                    published_at=datetime(2026, 7, 20) - timedelta(days=index),
+                    content_hash=f"hash-{index}",
+                )
+                for index in range(5)
+            ]
+        )
+        db.commit()
+        analyzer = SentimentAnalyzer(
+            Settings(database_url="sqlite://", llm_enabled=False, credentials_file="missing.ini")
+        )
+        transaction_states: list[bool] = []
+
+        def fake_analyze(_title: str, _content: str, _kind: str) -> SentimentResult:
+            transaction_states.append(db.in_transaction())
+            return SentimentResult("中性", 0, 0.8, "摘要", "理由", "test-model")
+
+        monkeypatch.setattr(analyzer, "analyze", fake_analyze)
+
+        count = analyzer.analyze_pending(db, limit=5, write_batch_size=2)
+
+        assert count == 5
+        assert transaction_states == [False] * 5
+        assert len(db.scalars(select(SentimentAnalysis)).all()) == 5
