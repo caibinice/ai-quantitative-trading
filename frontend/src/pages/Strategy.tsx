@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, formatNumber, formatPercent } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { beijingDateInput } from '../dateTime'
 import { DEFAULT_STOCK_UNIVERSE, MAX_STOCK_COUNT } from '../stockUniverse'
 import { chartPalette, useTheme } from '../theme-context'
 import type { BacktestResult, ResearchTask, StrategyConfig, StrategyParameters } from '../types'
@@ -16,7 +17,7 @@ export function Strategy() {
   const [config, setConfig] = useState<StrategyConfig | null>(null)
   const [watchlistText, setWatchlistText] = useState('')
   const [startDate, setStartDate] = useState(() => yearAgo())
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [endDate, setEndDate] = useState(() => beijingDateInput())
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [activeAction, setActiveAction] = useState<Action>('')
   const [message, setMessage] = useState('')
@@ -33,7 +34,11 @@ export function Strategy() {
     try {
       if (action === 'save') {
         const saved = await api<StrategyConfig>('/strategy', { method: 'PUT', body: JSON.stringify({ ...config, watchlist }) })
-        setConfig(saved); setMessage('策略配置已保存。')
+        setConfig(saved)
+        setWatchlistText(saved.watchlist.join(', '))
+        setMessage(saved.sync_task_id
+          ? `策略配置已保存；新增股票的数据同步任务 #${saved.sync_task_id} 已自动入队，行情页下拉框已按当前股票池更新。`
+          : '策略配置已保存；行情、舆情、排名和数据治理页将使用当前股票池。')
       } else if (action === 'sync') {
         const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'market_sync', payload: { symbols: watchlist, start_date: startDate, end_date: endDate } }) })
         setMessage(`数据同步任务 #${response.id} 已入队，可在任务中心查看进度。`)
@@ -128,5 +133,5 @@ function ActionButton({ icon, label, detail, active, disabled, onClick, accent =
 }
 
 function yearAgo() {
-  const value = new Date(); value.setFullYear(value.getFullYear() - 1); return value.toISOString().slice(0, 10)
+  return beijingDateInput(-365)
 }

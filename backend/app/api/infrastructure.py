@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.time import utc_iso
 from app.models import (
     DataQualityIssue,
     DataQualityRun,
@@ -165,8 +166,8 @@ def data_quality_summary(db: Session = Depends(get_db)) -> dict[str, Any]:
                 "checks_count": latest_run.checks_count,
                 "issues_count": latest_run.issues_count,
                 "details": latest_run.details,
-                "started_at": latest_run.started_at,
-                "finished_at": latest_run.finished_at,
+                "started_at": utc_iso(latest_run.started_at),
+                "finished_at": utc_iso(latest_run.finished_at),
             }
             if latest_run
             else None
@@ -198,9 +199,9 @@ def data_quality_issues(
             "entity_id": item.entity_id,
             "title": item.title,
             "detail": item.detail,
-            "first_seen_at": item.first_seen_at,
-            "last_seen_at": item.last_seen_at,
-            "resolved_at": item.resolved_at,
+            "first_seen_at": utc_iso(item.first_seen_at),
+            "last_seen_at": utc_iso(item.last_seen_at),
+            "resolved_at": utc_iso(item.resolved_at),
         }
         for item in rows
     ]

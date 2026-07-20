@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.time import utc_iso
 from app.models import StrategyConfig, WalkForwardRun
 from app.schemas import WalkForwardRequest
 from app.services.task_queue import enqueue_task
@@ -24,7 +25,7 @@ def _run_payload(item: WalkForwardRun, include_curve: bool = True) -> dict[str, 
         "parameters": item.parameters,
         "windows": item.windows,
         "metrics": item.metrics,
-        "created_at": item.created_at,
+        "created_at": utc_iso(item.created_at),
     }
     if include_curve:
         payload["equity_curve"] = item.equity_curve

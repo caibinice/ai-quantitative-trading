@@ -113,8 +113,119 @@ const dataResources: LearningResource[] = [
 
 export const learningChapters: LearningChapter[] = [
   {
-    id: 'quant-map',
+    id: 'market-basics',
     order: 1,
+    stage: 1,
+    title: '股票与 K 线零基础',
+    subtitle: '先看懂股票、OHLCV、成交量、复权与收益率',
+    duration: '3–4 小时',
+    level: '零基础',
+    objective: '不依赖“炒股黑话”，从一笔交易如何形成日 K 线讲起，能够正确阅读本项目的行情页并手算基础收益。',
+    outcomes: [
+      '能区分股票、指数、ETF 和基准，知道股票价格不等于公司价值本身。',
+      '能指出一根 K 线的开盘、最高、最低、收盘、实体和影线。',
+      '能解释成交量、成交额、换手率、前复权和简单收益率。',
+      '看到异常跳变时会先核对数据源和复权口径，而不是立即解释成交易信号。',
+    ],
+    concepts: [
+      {
+        title: '股票、指数、ETF 与交易',
+        summary: '先理解你买的是什么、指数衡量什么，以及订单价格为什么不一定等于屏幕最后价。',
+        points: [
+          '股票代表公司所有权份额，收益和本金都不保证。',
+          '指数是市场温度计，ETF 是可交易的一篮子基金。',
+          '流动性、买卖价差和滑点决定理论价格能否成交。',
+        ],
+      },
+      {
+        title: '一根 K 线的 OHLCV',
+        summary: 'K 线只是把一个周期的开盘、最高、最低、收盘与成交量压缩成图形，不是预言符号。',
+        points: [
+          '实体连接开盘与收盘，影线连接最高和最低。',
+          '上涨色与下跌色取决于软件约定，要看图例。',
+          '单根形态不能脱离前后价格、成交量与市场环境。',
+        ],
+      },
+      {
+        title: '复权、收益与风险',
+        summary: '分红送股会制造机械价格断层；统一复权口径后，才能正确计算复利、波动和回撤。',
+        points: [
+          '前复权用于保持历史序列相对连续。',
+          '累计收益需要连乘，涨跌百分比并不对称。',
+          '收益必须与回撤、波动、成本和基准一起看。',
+        ],
+      },
+    ],
+    checklist: [
+      '在行情页任选一根 K 线，写出开盘、最高、最低和收盘。',
+      '用自己的话解释股票、指数与 ETF 的差别。',
+      '手算 100 元涨 10% 再跌 10% 后的价格。',
+      '说明为什么未复权和前复权价格不能混合计算动量。',
+      '找到成交量、成交额和换手率，并解释单位。',
+      '运行 00_kline_basics.py 教学 Demo。',
+      '完成本章测验且得分不低于 2/3。',
+    ],
+    projectFiles: [
+      { path: 'frontend/src/pages/Market.tsx', reason: '查看 K 线和成交量如何在 ECharts 中组合。' },
+      { path: 'backend/app/services/provider.py', reason: '查看 AKShare OHLCV 字段怎样标准化。' },
+      { path: 'backend/app/services/data_quality.py', reason: '查看 OHLC 关系、缺口和异常收益检查。' },
+    ],
+    demo: {
+      file: 'learning/examples/00_kline_basics.py',
+      command: '.\\.venv\\Scripts\\python.exe learning\\examples\\00_kline_basics.py',
+      summary: '输入两天 OHLC，检查 K 线关系并计算单日与累计收益。',
+      snippet: `bars = [
+    {"open": 10.20, "high": 10.80, "low": 9.90, "close": 10.50},
+    {"open": 10.45, "high": 10.60, "low": 10.20, "close": 10.29},
+]
+returns = [bars[1]["close"] / bars[0]["close"] - 1]
+assert all(bar["low"] <= min(bar["open"], bar["close"])
+           <= max(bar["open"], bar["close"]) <= bar["high"] for bar in bars)`,
+    },
+    quiz: [
+      {
+        question: '一根日 K 线的实体连接哪两个价格？',
+        options: ['最高价与最低价', '开盘价与收盘价', '前收盘价与成交均价'],
+        answer: 1,
+        explanation: '实体连接开盘和收盘；最高、最低通过上下影线表示。',
+      },
+      {
+        question: '100 元先涨 10%，再跌 10%，最终是多少？',
+        options: ['100 元', '99 元', '101 元'],
+        answer: 1,
+        explanation: '100×1.10×0.90=99；百分比作用在不同基数上。',
+      },
+      {
+        question: '看到单日上涨 3000% 的前复权大盘股，第一步应做什么？',
+        options: ['立即买入', '先核对数据源、复权和异常行', '把因子上限改得更高'],
+        answer: 1,
+        explanation: '这远超正常波动范围，首先应视作潜在数据污染并阻断评分。',
+      },
+    ],
+    resources: [
+      {
+        title: '证券基础知识专题',
+        provider: '上海证券交易所投资者教育',
+        url: 'https://edu.sse.com.cn/',
+        note: '从证券基础、风险教育、年报和 ETF 等官方投教栏目开始。',
+      },
+      {
+        title: 'Stocks - FAQs',
+        provider: 'Investor.gov',
+        url: 'https://www.investor.gov/introduction-investing/investing-basics/investment-products/stocks',
+        note: '用通俗语言解释股票所有权、收益来源、风险和交易费用。',
+      },
+      {
+        title: 'Types of Orders',
+        provider: 'Investor.gov',
+        url: 'https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/types-orders',
+        note: '理解市价单与限价单为何不能同时保证成交与成交价格。',
+      },
+    ],
+  },
+  {
+    id: 'quant-map',
+    order: 2,
     stage: 1,
     title: '量化、AI 量化与 Web3',
     subtitle: '先建立正确的问题地图',
@@ -215,7 +326,7 @@ for daily_return in returns:
   },
   {
     id: 'project-tour',
-    order: 2,
+    order: 3,
     stage: 1,
     title: '项目导览与研究闭环',
     subtitle: '把九年工程经验映射到当前代码',
@@ -318,7 +429,7 @@ for daily_return in returns:
   },
   {
     id: 'python-bridge',
-    order: 3,
+    order: 4,
     stage: 2,
     title: '面向 Java / JS 开发者的 Python',
     subtitle: '跳过重复内容，补齐真正的差异',
@@ -408,7 +519,7 @@ for daily_return in returns:
   },
   {
     id: 'numpy-pandas',
-    order: 4,
+    order: 5,
     stage: 2,
     title: 'NumPy、pandas 与时间序列',
     subtitle: '量化研究真正的基础语言',
@@ -495,7 +606,7 @@ applied_signal = (momentum > 0).astype(float).shift(1).fillna(0.0)`,
   },
   {
     id: 'market-data',
-    order: 5,
+    order: 6,
     stage: 3,
     title: '行情、财务与收益风险',
     subtitle: '从数据字段走向金融含义',
@@ -595,7 +706,7 @@ annualized_volatility = returns.std(ddof=1) * (252 ** 0.5)`,
   },
   {
     id: 'factor-backtest',
-    order: 6,
+    order: 7,
     stage: 3,
     title: '因子、信号与可信回测',
     subtitle: '漂亮曲线之前先证明没有作弊',
@@ -695,7 +806,7 @@ net_return = tradable_position * prices.pct_change() - turnover * cost_rate`,
   },
   {
     id: 'sentiment-llm',
-    order: 7,
+    order: 8,
     stage: 4,
     title: '舆情因子与大模型',
     subtitle: '把文本判断变成可审计数据',
@@ -795,7 +906,7 @@ total_score = 0.7 * momentum_score + 0.3 * sentiment_score`,
   },
   {
     id: 'walk-forward',
-    order: 8,
+    order: 9,
     stage: 4,
     title: 'Walk-forward 与过拟合',
     subtitle: '最终只相信未参与选择的数据',
@@ -895,7 +1006,7 @@ total_score = 0.7 * momentum_score + 0.3 * sentiment_score`,
   },
   {
     id: 'research-engineering',
-    order: 9,
+    order: 10,
     stage: 5,
     title: '研究工程化与数据治理',
     subtitle: '让实验明天还能重复运行',
@@ -999,7 +1110,7 @@ if not existing:
   },
   {
     id: 'capstone',
-    order: 10,
+    order: 11,
     stage: 5,
     title: '毕业项目：一份可信的策略研究',
     subtitle: '成果不是收益数字，而是完整证据链',

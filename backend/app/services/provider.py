@@ -353,3 +353,38 @@ class AkshareProvider:
                 }
             )
         return rows
+
+    def cninfo_notices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]:
+        """Fetch official disclosure announcements exposed by CNINFO via AKShare."""
+        df = self._ak().stock_zh_a_disclosure_report_cninfo(
+            symbol=symbol,
+            market="沪深京",
+            keyword="",
+            category="",
+            start_date=start_date.strftime("%Y%m%d"),
+            end_date=end_date.strftime("%Y%m%d"),
+        )
+        rows: list[dict[str, Any]] = []
+        for record in df.to_dict("records"):
+            title = str(record.get("公告标题", "")).strip()
+            if not title or pd.isna(record.get("公告时间")):
+                continue
+            published_at = datetime.combine(
+                _date(record.get("公告时间")), datetime.min.time()
+            )
+            url = str(record.get("公告链接", ""))
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "kind": "notice",
+                    "title": title,
+                    "content": "巨潮资讯法定信息披露公告",
+                    "source": "巨潮资讯",
+                    "source_url": url,
+                    "published_at": published_at,
+                    "content_hash": content_hash(symbol, title, url, published_at),
+                }
+            )
+        return rows

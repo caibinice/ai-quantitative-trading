@@ -1,6 +1,7 @@
 import { Bot, CheckCircle2, Clock3, Save, TimerReset } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { formatBeijingDateTime } from '../dateTime'
 
 interface AutomationSettings {
   news_analysis_enabled: boolean
@@ -112,10 +113,5 @@ export function AutomationPanel({ location }: { location: 'sentiment' | 'tasks' 
 function formatNextRun(value: string | null | undefined, enabled: boolean): string {
   if (!enabled) return '已暂停'
   if (!value) return '等待调度器'
-  return new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return `${formatBeijingDateTime(value)} 北京时间`
 }

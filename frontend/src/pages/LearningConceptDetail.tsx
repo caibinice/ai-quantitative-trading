@@ -16,6 +16,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { apiUrl } from '../api'
 import { conceptLessons, lessonKey } from '../learning/conceptLessons'
 import { chapterById } from '../learning/curriculum'
+import { chapterGuides } from '../learning/chapterGuides'
 
 export function LearningConceptDetail() {
   const { chapterId = '', conceptIndex = '' } = useParams()
@@ -23,6 +24,7 @@ export function LearningConceptDetail() {
   const index = Number(conceptIndex)
   const concept = chapter?.concepts[index]
   const lesson = conceptLessons[lessonKey(chapterId, index)]
+  const guide = chapterGuides[chapterId]
 
   if (!chapter || !concept || !lesson || !Number.isInteger(index)) {
     return <Navigate to={chapter ? `/learn/${chapter.id}` : '/learn'} replace />
@@ -79,6 +81,23 @@ export function LearningConceptDetail() {
           <Lightbulb size={22} />
           <div><span>先建立心智模型</span><p>{lesson.mentalModel}</p></div>
         </section>
+
+        {guide && (
+          <section className="panel concept-glossary">
+            <div className="panel-head">
+              <div><span className="section-kicker">TERMS IN PLAIN CHINESE</span><h2>遇到名词先看这里</h2></div>
+            </div>
+            <div>
+              {guide.terms.map((item) => (
+                <article key={item.term}>
+                  <strong>{item.term}</strong>
+                  <p>{item.meaning}</p>
+                  <small>例：{item.example}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="concept-reading-grid">
           <article className="panel concept-prose">

@@ -14,6 +14,8 @@ export interface PriceBar {
   volume: number
   amount: number
   turnover_rate?: number
+  adjustment?: string
+  source?: string
 }
 
 export interface FinancialMetric {
@@ -22,6 +24,30 @@ export interface FinancialMetric {
   metric_name: string
   metric_value: number | null
   yoy: number | null
+  source?: string
+}
+
+export interface RankingExplanation {
+  momentum?: {
+    return_5d?: number
+    return_20d?: number
+    return_60d?: number
+    volatility_20d?: number
+    status?: string
+    anomaly_count?: number
+  }
+  quality?: Record<string, number>
+  data?: {
+    price_latest_date?: string | null
+    price_source?: string | null
+    price_rows?: number
+    excluded_demo_rows?: number
+    financial_report_date?: string | null
+    financial_available_at?: string | null
+    financial_source?: string | null
+  }
+  sentiment_event_count?: number
+  warning?: string
 }
 
 export interface RankingItem {
@@ -32,7 +58,7 @@ export interface RankingItem {
   quality_score: number
   sentiment_score: number
   total_score: number
-  explanation: Record<string, unknown>
+  explanation: RankingExplanation
 }
 
 export interface NewsItem {
@@ -74,6 +100,18 @@ export interface StrategyConfig {
   watchlist: string[]
   parameters: StrategyParameters
   updated_at?: string
+  sync_task_id?: number
+  sync_symbols?: string[]
+}
+
+export interface SentimentSource {
+  id: string
+  name: string
+  kind: string
+  status: 'active' | 'optional' | 'candidate'
+  registration: string
+  access: string
+  note: string
 }
 
 export interface BacktestResult {

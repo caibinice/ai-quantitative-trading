@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
+
+from app.core.time import beijing_iso, utc_iso
 
 
 class StrategyParameters(BaseModel):
@@ -164,6 +166,10 @@ class LearningProgressPayload(BaseModel):
 class LearningProgressResponse(LearningProgressPayload):
     updated_at: datetime | None = None
 
+    @field_serializer("updated_at")
+    def serialize_updated_at(self, value: datetime | None) -> str | None:
+        return utc_iso(value)
+
 
 class AutomationSettingsPayload(BaseModel):
     news_analysis_enabled: bool = True
@@ -177,3 +183,11 @@ class AutomationSettingsResponse(AutomationSettingsPayload):
     reasoning_effort: str
     backup_key_configured: bool
     updated_at: datetime | None = None
+
+    @field_serializer("next_run_at")
+    def serialize_next_run_at(self, value: datetime | None) -> str | None:
+        return beijing_iso(value)
+
+    @field_serializer("updated_at")
+    def serialize_updated_at(self, value: datetime | None) -> str | None:
+        return utc_iso(value)

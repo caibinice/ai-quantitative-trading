@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -30,8 +30,29 @@ def ensure_stock(db: Session, symbol: str, name: str = "") -> Stock:
 
 
 def upsert_prices(db: Session, rows: Iterable[dict[str, Any]]) -> int:
+    items = list(rows)
+    real_rows = [row for row in items if row.get("source") != "demo"]
+    for symbol in {row["symbol"] for row in real_rows}:
+        symbol_rows = [row for row in real_rows if row["symbol"] == symbol]
+        first_date = min(row["trade_date"] for row in symbol_rows)
+        last_date = max(row["trade_date"] for row in symbol_rows)
+        # Demo rows are useful before the first real sync, but must never remain
+        # beside a sufficiently long real history: synthetic points can corrupt
+        # returns and create false mixed-source quality alerts.
+        conditions = [
+            DailyPrice.symbol == symbol,
+            DailyPrice.source == "demo",
+        ]
+        if len(symbol_rows) < 21:
+            conditions.extend(
+                [
+                    DailyPrice.trade_date >= first_date,
+                    DailyPrice.trade_date <= last_date,
+                ]
+            )
+        db.execute(delete(DailyPrice).where(*conditions))
     count = 0
-    for row in rows:
+    for row in items:
         existing = db.scalar(
             select(DailyPrice).where(
                 DailyPrice.symbol == row["symbol"], DailyPrice.trade_date == row["trade_date"]

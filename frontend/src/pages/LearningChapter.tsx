@@ -24,6 +24,7 @@ import {
   type LearningChapter as LearningChapterType,
 } from '../learning/curriculum'
 import { checklistKey, useLearningProgress } from '../learning/useLearningProgress'
+import { chapterGuides } from '../learning/chapterGuides'
 
 export function LearningChapter() {
   const { chapterId = '' } = useParams()
@@ -43,6 +44,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [submitted, setSubmitted] = useState(false)
   const stage = learningStages.find((item) => item.id === chapter.stage)
+  const guide = chapterGuides[chapter.id]
   const previous = learningChapters[chapter.order - 2]
   const next = learningChapters[chapter.order]
   const completed = chapterCompleted(chapter.id)
@@ -113,6 +115,66 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
           <Target size={20} />
           <div><span>本章目标</span><p>{chapter.objective}</p></div>
         </section>
+
+        {guide && (
+          <section className="chapter-textbook">
+            <div className="chapter-section-title">
+              <BookOpen size={18} />
+              <div><span>FULL CHAPTER GUIDE</span><h2>本章教材正文</h2></div>
+            </div>
+            <article className="panel textbook-intro">
+              <span>先用大白话说</span>
+              <p>{guide.plainLanguage}</p>
+            </article>
+            {chapter.id === 'market-basics' && <KlinePrimer />}
+            <div className="textbook-layout">
+              <div className="textbook-sections">
+                {guide.sections.map((section) => (
+                  <article className="panel textbook-section" key={section.title}>
+                    <h3>{section.title}</h3>
+                    {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                    {section.bullets && <ul>{section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}
+                  </article>
+                ))}
+              </div>
+              <aside className="textbook-aside">
+                <article className="panel guide-diagram">
+                  <span className="section-kicker">PROCESS MAP</span>
+                  <h3>{guide.diagram.title}</h3>
+                  <div>
+                    {guide.diagram.nodes.map((node, index) => (
+                      <div key={node.title}>
+                        <i>{index + 1}</i>
+                        <p><strong>{node.title}</strong><span>{node.detail}</span></p>
+                        {index < guide.diagram.nodes.length - 1 && <b>↓</b>}
+                      </div>
+                    ))}
+                  </div>
+                </article>
+                <article className="panel guide-terms">
+                  <span className="section-kicker">PLAIN GLOSSARY</span>
+                  <h3>本章名词翻译</h3>
+                  {guide.terms.map((item) => (
+                    <div key={item.term}>
+                      <strong>{item.term}</strong>
+                      <p>{item.meaning}</p>
+                      <small>例：{item.example}</small>
+                    </div>
+                  ))}
+                </article>
+              </aside>
+            </div>
+            <article className="panel worked-example">
+              <div>
+                <span className="section-kicker">WORKED EXAMPLE</span>
+                <h3>{guide.workedExample.title}</h3>
+                <p>{guide.workedExample.question}</p>
+              </div>
+              <ol>{guide.workedExample.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+              <strong>{guide.workedExample.conclusion}</strong>
+            </article>
+          </section>
+        )}
 
         <section className="chapter-section">
           <div className="chapter-section-title">
@@ -276,6 +338,36 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         </footer>
       </main>
     </div>
+  )
+}
+
+function KlinePrimer() {
+  const candles = [
+    { type: 'up', label: '上涨实体', high: '8%', low: '12%', bodyTop: '31%', bodyHeight: '38%' },
+    { type: 'down', label: '下跌实体', high: '13%', low: '9%', bodyTop: '25%', bodyHeight: '44%' },
+    { type: 'up', label: '长下影', high: '17%', low: '4%', bodyTop: '28%', bodyHeight: '22%' },
+    { type: 'down', label: '长上影', high: '3%', low: '19%', bodyTop: '43%', bodyHeight: '23%' },
+  ]
+  return (
+    <article className="panel kline-primer">
+      <div className="kline-copy">
+        <span className="section-kicker">CANDLESTICK ANATOMY</span>
+        <h3>先把 K 线当成 OHLC 数据图，不背“形态口诀”</h3>
+        <p>细线覆盖最低到最高，矩形实体覆盖开盘到收盘。右侧四根只是不同 OHLC 组合；它们描述已经发生的价格路径，不自动包含未来方向。</p>
+        <div><span><i className="up" />收盘 ≥ 开盘</span><span><i className="down" />收盘 ＜ 开盘</span></div>
+      </div>
+      <div className="candlestick-board">
+        <span className="price-label high">High 最高</span>
+        <span className="price-label low">Low 最低</span>
+        {candles.map((candle) => (
+          <div className="teaching-candle" key={candle.label}>
+            <i className={`wick ${candle.type}`} style={{ top: candle.high, bottom: candle.low }} />
+            <b className={`body ${candle.type}`} style={{ top: candle.bodyTop, height: candle.bodyHeight }} />
+            <span>{candle.label}</span>
+          </div>
+        ))}
+      </div>
+    </article>
   )
 }
 

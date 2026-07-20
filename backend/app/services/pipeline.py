@@ -25,7 +25,14 @@ def sync_market_data(
     job = JobRun(job_type="market_sync", status="running", details={"symbols": symbols})
     db.add(job)
     db.commit()
-    totals = {"prices": 0, "financials": 0, "news": 0, "notices": 0, "errors": []}
+    totals = {
+        "prices": 0,
+        "financials": 0,
+        "news": 0,
+        "notices": 0,
+        "cninfo_notices": 0,
+        "errors": [],
+    }
     try:
         try:
             names = {item["symbol"]: item["name"] for item in provider.stock_snapshot()}
@@ -66,6 +73,16 @@ def sync_market_data(
                     "notices",
                     include_notices,
                     lambda symbol=symbol: provider.notices(
+                        symbol,
+                        max(start_date, end_date - timedelta(days=90)),
+                        end_date,
+                    ),
+                    upsert_news,
+                ),
+                (
+                    "cninfo_notices",
+                    include_notices,
+                    lambda symbol=symbol: provider.cninfo_notices(
                         symbol,
                         max(start_date, end_date - timedelta(days=90)),
                         end_date,

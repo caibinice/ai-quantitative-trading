@@ -72,6 +72,23 @@ def detect_price_issues(
         )
 
     sorted_rows = sorted(rows, key=lambda item: item.trade_date)
+    sources = {getattr(row, "source", "") for row in rows}
+    if "demo" in sources and len(sources) > 1:
+        demo_dates = [
+            row.trade_date.isoformat()
+            for row in rows
+            if getattr(row, "source", "") == "demo"
+        ]
+        issues.append(
+            _issue(
+                "demo_contamination",
+                "critical",
+                entity_type,
+                symbol,
+                "真实行情序列混入演示数据",
+                {"count": len(demo_dates), "sample_dates": demo_dates[:10]},
+            )
+        )
     extreme_dates: list[str] = []
     for previous, current in zip(sorted_rows, sorted_rows[1:], strict=False):
         change = current.close / previous.close - 1 if previous.close else 0

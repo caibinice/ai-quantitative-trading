@@ -56,7 +56,7 @@ export function LearningHome() {
       <PageHeader
         eyebrow="Quant learning academy"
         title="从工程师到量化研究者"
-        description="为有 Java、JavaScript 和科研计算背景的开发者设计：五个阶段、十个章节，从 Python 时间序列到舆情因子、可信回测和毕业研究。"
+        description={`为有 Java、JavaScript 和科研计算背景的开发者设计：五个阶段、${learningChapters.length} 个章节，先补股票与 K 线常识，再进入 Python、舆情因子、可信回测和毕业研究。`}
         actions={(
           <>
             <button className="button" onClick={handleReset}>
@@ -105,7 +105,7 @@ export function LearningHome() {
       <section className="learning-stat-grid">
         {[
           { icon: Route, label: '学习阶段', value: '5', note: '基础到成果' },
-          { icon: BookOpenCheck, label: '核心章节', value: '10', note: '每章独立子页面' },
+          { icon: BookOpenCheck, label: '核心章节', value: String(learningChapters.length), note: '教材正文 + 知识详情' },
           { icon: CheckCircle2, label: '行动清单', value: String(totalChecklistItems), note: '跨设备保存进度' },
           { icon: Clock3, label: '建议节奏', value: '8–10', note: '周 · 每周 5–8 小时' },
         ].map(({ icon: Icon, label, value, note }) => (
@@ -123,7 +123,7 @@ export function LearningHome() {
           <span className="section-kicker">FIVE-STAGE ROADMAP</span>
           <h2>进阶训练 1 → 2 → 3 → 4 → 5</h2>
         </div>
-        <p>每阶段两章。先建立概念与数据基础，再做策略，最后加入 AI 和工程化。</p>
+        <p>第一阶段先补股票/K 线常识和项目地图；随后学习数据、策略、AI 验证与工程化。</p>
       </section>
 
       <section className="stage-roadmap">

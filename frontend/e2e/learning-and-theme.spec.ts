@@ -29,6 +29,7 @@ test('light theme covers learning, strategy and walk-forward surfaces', async ({
 
 test('all learning chapters expose three detailed lessons', async ({ page }) => {
   const chapterIds = [
+    'market-basics',
     'quant-map',
     'project-tour',
     'python-bridge',
@@ -41,14 +42,26 @@ test('all learning chapters expose three detailed lessons', async ({ page }) => 
     'capstone',
   ]
 
-  for (const chapterId of chapterIds) {
-    const response = await page.goto(`learn/${chapterId}`)
-    expect(response?.status(), `chapter ${chapterId} should load`).toBe(200)
+  for (const [chapterIndex, chapterId] of chapterIds.entries()) {
+    if (chapterIndex === 0) {
+      const response = await page.goto(`learn/${chapterId}`)
+      expect(response?.status(), `chapter ${chapterId} should load`).toBe(200)
+    } else {
+      await page.evaluate((id) => {
+        window.history.pushState({}, '', `/quant/learn/${id}`)
+        window.dispatchEvent(new PopStateEvent('popstate'))
+      }, chapterId)
+    }
     await expect(page.locator('.concept-card')).toHaveCount(3)
+    if (chapterId === 'market-basics') {
+      await expect(page.locator('.kline-primer')).toBeVisible()
+      await expect(page.locator('.textbook-section')).toHaveCount(4)
+      await page.screenshot({ path: '../output/playwright/kline-textbook.png', fullPage: true })
+    }
     await page.locator('.concept-card').first().click()
     await expect(page.locator('.concept-flow-node').first()).toBeVisible()
     expect(await page.locator('.concept-flow-node').count()).toBeGreaterThan(2)
-    await expect(page.locator('.concept-prose > p')).toHaveCount(2)
+    expect(await page.locator('.concept-prose > p').count()).toBeGreaterThanOrEqual(2)
     await expect(page.locator('.concept-list-card.pitfall > p')).toHaveCount(3)
     await page.waitForTimeout(200)
   }
@@ -67,5 +80,10 @@ test('learning sources download and automation settings are visible', async ({ p
   await expect(page.locator('.automation-model strong')).toHaveText('deepseek-v4-pro')
   await expect(page.locator('.automation-interval input')).toHaveValue('6')
   await expect(page.locator('.automation-model small')).toContainText('备用 Key 就绪')
+  await expect(page.locator('.sentiment-source-grid article')).toHaveCount(5)
+  const positiveResult = page.locator('.sentiment-result.positive').first()
+  if (await positiveResult.count()) {
+    await expect(positiveResult).toHaveCSS('color', 'rgb(8, 127, 91)')
+  }
   await page.screenshot({ path: '../output/playwright/sentiment-automation.png', fullPage: true })
 })

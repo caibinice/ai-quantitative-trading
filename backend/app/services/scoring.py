@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import date, datetime, timedelta
+from typing import Any
 
 import numpy as np
 from sqlalchemy import select
@@ -22,19 +23,41 @@ def _bounded_score(value: float, scale: float = 1.0) -> float:
     return round(50 + 50 * math.tanh(value * scale), 2)
 
 
-def momentum_component(closes: list[float]) -> tuple[float, dict[str, float]]:
+def momentum_component(closes: list[float]) -> tuple[float, dict[str, Any]]:
     if len(closes) < 21:
-        return 50.0, {"return_20d": 0.0, "return_60d": 0.0, "volatility_20d": 0.0}
+        return 50.0, {
+            "return_5d": 0.0,
+            "return_20d": 0.0,
+            "return_60d": 0.0,
+            "volatility_20d": 0.0,
+            "status": "insufficient_history",
+            "anomaly_count": 0,
+        }
     values = np.asarray(closes, dtype=float)
+    all_daily = np.diff(values) / values[:-1]
+    anomaly_count = int(np.sum(np.abs(all_daily) > 0.35))
+    if anomaly_count:
+        return 50.0, {
+            "return_5d": 0.0,
+            "return_20d": 0.0,
+            "return_60d": 0.0,
+            "volatility_20d": 0.0,
+            "status": "blocked_by_price_anomaly",
+            "anomaly_count": anomaly_count,
+        }
+    return_5 = values[-1] / values[-6] - 1 if len(values) >= 6 else 0.0
     return_20 = values[-1] / values[-21] - 1
     return_60 = values[-1] / values[-61] - 1 if len(values) >= 61 else return_20
     daily = np.diff(values[-21:]) / values[-21:-1]
     volatility = float(np.std(daily, ddof=1) * math.sqrt(252)) if len(daily) > 1 else 0.0
-    raw = 0.6 * return_20 + 0.4 * return_60 - 0.15 * volatility
+    raw = 0.25 * return_5 + 0.45 * return_20 + 0.30 * return_60 - 0.10 * volatility
     return _bounded_score(raw, 4.0), {
+        "return_5d": round(float(return_5), 6),
         "return_20d": round(float(return_20), 6),
         "return_60d": round(float(return_60), 6),
         "volatility_20d": round(volatility, 6),
+        "status": "ok",
+        "anomaly_count": 0,
     }
 
 
@@ -42,17 +65,28 @@ def quality_component(
     metrics: list[FinancialMetric | PointInTimeFinancial],
 ) -> tuple[float, dict[str, float]]:
     selected: dict[str, float] = {}
-    keywords = ("净资产收益率", "营业总收入", "归母净利润", "净利润")
+    scales = {
+        "净资产收益率": 20.0,
+        "营业总收入同比增长": 30.0,
+        "净利润同比增长": 30.0,
+        "销售毛利率": 40.0,
+    }
     for metric in metrics:
-        if any(keyword in metric.metric_name for keyword in keywords):
-            yoy = metric.yoy if isinstance(metric, FinancialMetric) else None
-            value = yoy if yoy is not None else metric.metric_value
-            if value is not None and metric.metric_name not in selected:
-                selected[metric.metric_name] = float(value)
+        metric_name = metric.metric_name
+        if metric_name not in scales:
+            continue
+        value = metric.metric_value
+        if isinstance(metric, FinancialMetric) and metric.yoy is not None:
+            value = metric.yoy
+        if value is not None and metric_name not in selected:
+            selected[metric_name] = float(value)
     if not selected:
         return 50.0, {}
-    normalized = [max(-100, min(100, value)) / 100 for value in selected.values()]
-    return _bounded_score(float(np.mean(normalized)), 1.2), selected
+    normalized = [
+        math.tanh(max(-100.0, min(100.0, value)) / scales[name])
+        for name, value in selected.items()
+    ]
+    return _bounded_score(float(np.mean(normalized)), 1.0), selected
 
 
 def sentiment_component(
@@ -80,7 +114,7 @@ def calculate_scores(
     results: list[FactorScore] = []
     start_news = datetime.combine(as_of - timedelta(days=30), datetime.min.time())
     for symbol in symbols:
-        prices = list(
+        price_rows = list(
             db.scalars(
                 select(DailyPrice)
                 .where(DailyPrice.symbol == symbol, DailyPrice.trade_date <= as_of)
@@ -88,6 +122,8 @@ def calculate_scores(
                 .limit(120)
             ).all()
         )
+        real_prices = [item for item in price_rows if item.source != "demo"]
+        prices = real_prices if len(real_prices) >= 21 else price_rows
         prices.reverse()
         momentum, momentum_detail = momentum_component([item.close for item in prices])
 
@@ -139,8 +175,27 @@ def calculate_scores(
             "momentum": momentum_detail,
             "quality": quality_detail,
             "quality_data_mode": "point_in_time",
+            "data": {
+                "price_latest_date": prices[-1].trade_date.isoformat() if prices else None,
+                "price_source": prices[-1].source if prices else None,
+                "price_rows": len(prices),
+                "excluded_demo_rows": len(price_rows) - len(real_prices)
+                if len(real_prices) >= 21
+                else 0,
+                "financial_report_date": financials[0].report_date.isoformat()
+                if financials
+                else None,
+                "financial_available_at": financials[0].available_at.isoformat()
+                if financials
+                else None,
+                "financial_source": financials[0].source if financials else None,
+            },
             "sentiment_event_count": event_count,
-            "warning": "评分仅用于研究排序，不代表投资建议。",
+            "warning": (
+                "行情存在异常跳变，动量已回退为中性；请先处理数据质量告警。"
+                if momentum_detail["status"] == "blocked_by_price_anomaly"
+                else "评分仅用于研究排序，不代表投资建议。"
+            ),
         }
         db.add(item)
         results.append(item)

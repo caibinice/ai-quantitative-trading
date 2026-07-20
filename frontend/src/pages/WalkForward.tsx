@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, formatNumber, formatPercent } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { beijingDateInput } from '../dateTime'
 import { chartPalette, useTheme } from '../theme-context'
 import type { ResearchTask, StrategyConfig, WalkForwardRun } from '../types'
 
@@ -82,4 +83,4 @@ export function WalkForward() {
 }
 
 function parseNumbers(value: string) { return value.split(/[,，\s]+/).map(Number).filter((item) => Number.isFinite(item)) }
-function dateOffset(days: number) { const value = new Date(); value.setDate(value.getDate() + days); return value.toISOString().slice(0, 10) }
+function dateOffset(days: number) { return beijingDateInput(days) }

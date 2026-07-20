@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.time import utc_iso
 from app.models import ResearchTask
 from app.schemas import TaskCreateRequest
 from app.services.task_queue import cancel_task, enqueue_task, retry_task
@@ -27,9 +28,9 @@ def task_payload(task: ResearchTask) -> dict[str, Any]:
         "attempts": task.attempts,
         "max_attempts": task.max_attempts,
         "worker_id": task.worker_id,
-        "created_at": task.created_at,
-        "started_at": task.started_at,
-        "finished_at": task.finished_at,
+        "created_at": utc_iso(task.created_at),
+        "started_at": utc_iso(task.started_at),
+        "finished_at": utc_iso(task.finished_at),
     }
 
 
