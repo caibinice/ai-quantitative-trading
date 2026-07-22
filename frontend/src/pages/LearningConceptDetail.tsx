@@ -4,17 +4,24 @@ import {
   ArrowRight,
   Beaker,
   BookOpen,
+  Braces,
   CheckCircle2,
+  CircleHelp,
+  Database,
   Download,
   ExternalLink,
   FileCode2,
   GitBranch,
   Lightbulb,
   ListChecks,
+  PlayCircle,
+  Quote,
+  Target,
 } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { apiUrl } from '../api'
 import { conceptLessons, lessonKey } from '../learning/conceptLessons'
+import { beginnerWorkbooks } from '../learning/beginnerWorkbooks'
 import { chapterById } from '../learning/curriculum'
 import { chapterGuides } from '../learning/chapterGuides'
 
@@ -25,6 +32,8 @@ export function LearningConceptDetail() {
   const concept = chapter?.concepts[index]
   const lesson = conceptLessons[lessonKey(chapterId, index)]
   const guide = chapterGuides[chapterId]
+  const workbook = beginnerWorkbooks[chapterId]
+  const coach = workbook?.concepts[index]
 
   if (!chapter || !concept || !lesson || !Number.isInteger(index)) {
     return <Navigate to={chapter ? `/learn/${chapter.id}` : '/learn'} replace />
@@ -82,6 +91,29 @@ export function LearningConceptDetail() {
           <div><span>先建立心智模型</span><p>{lesson.mentalModel}</p></div>
         </section>
 
+        {workbook && coach && (
+          <section className="panel beginner-compass">
+            <div className="beginner-compass-intro">
+              <CircleHelp size={21} />
+              <div>
+                <span className="section-kicker">BEGINNER TRANSLATION</span>
+                <h2>这一页到底要学会什么</h2>
+                <p>{workbook.beginnerNote}</p>
+                <strong><Target size={15} /> 本知识点重点：{coach.focus}</strong>
+              </div>
+            </div>
+            <div className="plain-word-grid">
+              {workbook.plainWords.map((item) => (
+                <article key={item.term}>
+                  <strong>{item.term}</strong>
+                  <p>{item.translation}</p>
+                  <small>在本项目中：{item.projectUse}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         {guide && (
           <section className="panel concept-glossary">
             <div className="panel-head">
@@ -136,24 +168,116 @@ export function LearningConceptDetail() {
           {lesson.code && <pre><code>{lesson.code}</code></pre>}
         </section>
 
-        <section className="concept-reading-grid compact">
+        <section className="concept-reading-grid compact expanded-learning-grid">
           <article className="panel concept-list-card pitfall">
             <div className="panel-head">
               <div><span className="section-kicker">COMMON PITFALLS</span><h2>常见误区</h2></div>
               <AlertTriangle size={20} />
             </div>
-            {lesson.pitfalls.map((item) => <p key={item}><span>!</span>{item}</p>)}
+            {lesson.pitfalls.map((item, itemIndex) => {
+              const detail = coach?.pitfallDetails[itemIndex]
+              return (
+                <article className="pitfall-detail" key={item}>
+                  <header><span>误区 {itemIndex + 1}</span><strong>{item}</strong></header>
+                  <div><b>为什么会错</b><p>{detail?.why ?? '它省略了必要的前提、时间和验证步骤，可能让偶然结果看起来像稳定规律。'}</p></div>
+                  <div><b>正确做法</b><p>{detail?.correction ?? '把说法改成可计算规则，保留数据来源，并用样本外结果和测试验证。'}</p></div>
+                  <div className="pitfall-check"><b>用这个问题自查</b><p>{detail?.selfCheck ?? `你能不用“感觉”解释为什么“${item}”不可靠，并给出可验证证据吗？`}</p></div>
+                </article>
+              )
+            })}
           </article>
           <article className="panel concept-list-card practice">
             <div className="panel-head">
               <div><span className="section-kicker">PRACTICE</span><h2>马上动手</h2></div>
               <ListChecks size={20} />
             </div>
+            <div className="practice-goal"><Target size={17} /><p><strong>完成证据</strong>{coach?.practiceEvidence ?? '留下可重复运行的代码、输出和解释。'}</p></div>
             {lesson.practice.map((item, itemIndex) => (
-              <p key={item}><span>{itemIndex + 1}</span>{item}</p>
+              <div className="practice-task" key={item}>
+                <span>{itemIndex + 1}</span>
+                <div><strong>{item}</strong><p>{itemIndex === 0 ? '先不改参数完成一次，把操作和结果记在研究日志。' : '再用自己的话解释结果；如果解释不了，就回到上面的术语和流程图。'}</p></div>
+              </div>
             ))}
+            <div className="practice-challenge">
+              <Braces size={17} />
+              <p><strong>只改一个变量</strong>{coach?.challenge ?? '修改一个输入，运行后比较前后差异。'}</p>
+            </div>
           </article>
         </section>
+
+        {workbook && (
+          <section className="panel guided-lab">
+            <div className="guided-lab-head">
+              <div><span className="section-kicker">GUIDED LAB</span><h2><PlayCircle size={20} /> {workbook.lab.title}</h2><p>{workbook.lab.goal}</p></div>
+              <div className="lab-downloads">
+                <a className="button" href={downloadUrl(workbook.lab.datasetPath)} download><Database size={15} /> 下载练习数据</a>
+                <a className="button primary" href={downloadUrl(workbook.lab.scriptPath)} download><FileCode2 size={15} /> 下载跟练脚本</a>
+              </div>
+            </div>
+
+            <div className="lab-material-note">
+              <Database size={18} />
+              <div><strong>{workbook.lab.datasetPath}</strong><p>{workbook.lab.datasetDescription}</p></div>
+            </div>
+
+            <div className="guided-lab-section">
+              <h3>照着做：每一步都告诉你应看到什么</h3>
+              <div className="guided-lab-steps">
+                {workbook.lab.steps.map((step, stepIndex) => (
+                  <article className="guided-lab-step" key={step.title}>
+                    <i>{stepIndex + 1}</i>
+                    <div><strong>{step.title}</strong><p><b>怎么做：</b>{step.action}</p><p className="expected"><b>预期：</b>{step.expected}</p></div>
+                  </article>
+                ))}
+              </div>
+              <div className="lab-command"><span>在项目根目录运行</span><code>{workbook.lab.command}</code></div>
+            </div>
+
+            <div className="guided-lab-section">
+              <h3>代码逐段解读：不是复制粘贴就结束</h3>
+              <div className="code-walkthrough">
+                {workbook.lab.codeWalkthrough.map((item, itemIndex) => (
+                  <article key={item.code}>
+                    <span>代码 {itemIndex + 1}</span>
+                    <code>{item.code}</code>
+                    <p>{item.explanation}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="lab-result-grid">
+              <article>
+                <h3>预期输出</h3>
+                <pre>{workbook.lab.expectedOutput.join('\n')}</pre>
+              </article>
+              <article>
+                <h3>怎样确认自己真的学会了</h3>
+                {workbook.lab.verification.map((item) => <p key={item}><CheckCircle2 size={15} />{item}</p>)}
+              </article>
+            </div>
+          </section>
+        )}
+
+        {workbook && (
+          <section className="panel public-reading-panel">
+            <div className="panel-head">
+              <div><span className="section-kicker">PUBLIC SOURCES & PRACTITIONER NOTES</span><h2><Quote size={19} /> 公开教程、论文与从业经验</h2></div>
+            </div>
+            <p className="source-disclaimer">以下内容只做原文观点摘要，并提供可追溯链接；从业者经验不是事实定律，更不是荐股或收益承诺。</p>
+            <div className="public-reading-grid">
+              {workbook.readings.map((item) => (
+                <a href={item.url} target="_blank" rel="noreferrer" key={item.url}>
+                  <span>{item.kind}</span>
+                  <strong>{item.title}</strong>
+                  <small>{item.provider}</small>
+                  <p>{item.takeaway}</p>
+                  <i>打开原文 <ExternalLink size={13} /></i>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="concept-reading-grid compact">
           <article className="panel project-map concept-downloads">

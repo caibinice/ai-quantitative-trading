@@ -25,3 +25,4 @@ print(f"第二天收盘收益: {day_two_return:.2%}")
 start_price = 100.0
 final_price = start_price * 1.10 * 0.90
 print(f"100 元先涨 10% 再跌 10%: {final_price:.2f} 元")
+print("DEMO_OK")

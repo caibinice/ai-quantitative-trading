@@ -28,6 +28,7 @@ test('light theme covers learning, strategy and walk-forward surfaces', async ({
 })
 
 test('all learning chapters expose three detailed lessons', async ({ page }) => {
+  test.setTimeout(120_000)
   const chapterIds = [
     'market-basics',
     'quant-map',
@@ -52,11 +53,19 @@ test('all learning chapters expose three detailed lessons', async ({ page }) => 
         await expect(page.locator('.textbook-section')).toHaveCount(4)
         await page.screenshot({ path: '../output/playwright/kline-textbook.png', fullPage: true })
       }
-      await page.locator('.concept-card').first().click()
-      await expect(page.locator('.concept-flow-node').first()).toBeVisible()
-      expect(await page.locator('.concept-flow-node').count()).toBeGreaterThan(2)
-      expect(await page.locator('.concept-prose > p').count()).toBeGreaterThanOrEqual(2)
-      await expect(page.locator('.concept-list-card.pitfall > p')).toHaveCount(3)
+      for (let conceptIndex = 0; conceptIndex < 3; conceptIndex += 1) {
+        const detailResponse = await page.goto(`learn/${chapterId}/concepts/${conceptIndex}`)
+        expect(detailResponse?.status()).toBe(200)
+        await expect(page.locator('.concept-flow-node').first()).toBeVisible()
+        expect(await page.locator('.concept-flow-node').count()).toBeGreaterThan(2)
+        expect(await page.locator('.concept-prose > p').count()).toBeGreaterThanOrEqual(2)
+        await expect(page.locator('.beginner-compass')).toBeVisible()
+        await expect(page.locator('.pitfall-detail')).toHaveCount(3)
+        expect(await page.locator('.guided-lab-step').count()).toBeGreaterThanOrEqual(4)
+        expect(await page.locator('.code-walkthrough article').count()).toBeGreaterThanOrEqual(3)
+        expect(await page.locator('.public-reading-grid a').count()).toBeGreaterThanOrEqual(2)
+        await expect(page.locator('.lab-downloads a').first()).toHaveAttribute('href', /learning\/files\/learning\/datasets/)
+      }
     })
   }
   await page.screenshot({ path: '../output/playwright/learning-detail.png', fullPage: true })

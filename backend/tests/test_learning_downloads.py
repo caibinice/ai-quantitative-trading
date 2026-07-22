@@ -10,6 +10,8 @@ def test_learning_file_download_allows_project_sources() -> None:
     target = _resolve_download_path("learning/examples/01_python_bridge.py")
     assert target.is_file()
     assert target.name == "01_python_bridge.py"
+    assert _resolve_download_path("learning/labs/01_market_basics_lab.py").is_file()
+    assert _resolve_download_path("learning/datasets/01_market_basics.csv").is_file()
     assert _resolve_download_path(".env.example").name == ".env.example"
 
 
