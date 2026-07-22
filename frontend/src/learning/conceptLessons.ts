@@ -436,13 +436,13 @@ export const conceptLessons: Record<string, ConceptLesson> = {
   'sentiment-llm:1': {
     mentalModel: '事件因子的第一条规则是时间因果：只有 published_at 已经发生的内容才能影响当前评分，且旧事件影响应逐渐减弱。',
     deepDive: [
-      '抓取时间 fetched_at 不能替代发布时间 published_at。旧公告今天被重新抓到，不能算成今天的新利好；同一内容也要用稳定哈希去重，避免重复放大。',
+      '抓取时间 fetched_at 不能替代发布时间 published_at。旧公告今天被重新抓到，不能算成今天的新利好。第一层用稳定哈希挡住完全相同的记录，第二层再综合规范化链接、标题、正文梗概和发布时间识别跨网站转载，避免重复放大。',
       '指数衰减常用 weight=exp(-age/half_life) 或 0.5^(age/half_life)。半衰期表示经过该时间后权重减半，适合表达新闻冲击逐步消退，但参数仍需样本外验证。',
     ],
     visualTitle: '事件从发布到失效',
     flow: [
       { title: 'published_at', detail: '市场首次可知时刻' },
-      { title: '去重', detail: 'content_hash 阻止重复计数' },
+      { title: '去重', detail: '哈希精确匹配 + 90% 近似事件匹配' },
       { title: '窗口筛选', detail: '只取评分日前的近期事件' },
       { title: '时间衰减', detail: '越近权重越高' },
       { title: '聚合', detail: '按股票形成情绪因子' },
@@ -532,7 +532,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
   'research-engineering:0': {
     mentalModel: '幂等意味着同一任务执行多次，最终业务状态与执行一次相同；可重试建立在这个性质之上。',
     deepDive: [
-      '数据库自增 id 不能识别业务重复。行情用 symbol+trade_date，新闻用 content_hash，财务用 symbol+report_date+available_at+metric_name 建唯一约束，重复同步时执行 upsert。',
+      '数据库自增 id 不能识别业务重复。行情用 symbol+trade_date，新闻先用 content_hash 做唯一约束，再对同一股票的链接、标题、梗概和发布时间做近似事件匹配；财务用 symbol+report_date+available_at+metric_name 建唯一约束，重复同步时执行 upsert。',
       '并非所有字段都适合更新。原始来源时间、人工标记和真实数据不能被演示种子覆盖；任务开始前应明确插入、更新、忽略和冲突规则。',
     ],
     visualTitle: '安全重试的四道防线',
@@ -543,7 +543,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
       { title: '任务状态', detail: '记录尝试、错误和结果' },
     ],
     exampleTitle: '新闻重复抓取',
-    example: '相同标题、正文和来源生成相同哈希，数据库唯一约束阻止重复插入。重跑同步任务不会把同一利好累计两次。',
+    example: '完全相同的数据由哈希唯一约束阻止插入；不同网站转载时，即使 URL 和字面略有变化，也会按同一股票、72 小时时窗及约 90% 综合相似度识别。相同事件影响两只股票时仍各保留一条，分别进行研判。',
     pitfalls: ['把自增 id 当幂等键', '捕获冲突后静默丢弃所有更新', '失败重试前不回滚事务'],
     practice: ['找出三个数据表的 UniqueConstraint', '重复运行一次种子或同步并比较记录数'],
   },

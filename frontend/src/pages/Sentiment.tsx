@@ -88,14 +88,19 @@ export function Sentiment() {
       </section>
       <section className="panel news-panel">
         <div className="filterbar"><div className="filter-title"><Filter size={17} />筛选事件</div><select value={symbol} onChange={(event) => setSymbol(event.target.value)}><option value="">全部股票</option>{stocks.map((stock) => <option key={stock.symbol} value={stock.symbol}>{stock.symbol} · {stock.name}</option>)}</select><select value={kind} onChange={(event) => setKind(event.target.value)}><option value="">新闻 + 公告</option><option value="news">新闻</option><option value="notice">公告</option></select><select value={label} onChange={(event) => setLabel(event.target.value)}><option value="">全部标签</option><option value="利好">利好</option><option value="中性">中性</option><option value="利空">利空</option><option value="待分析">待分析</option></select><button className="icon-button" onClick={load} aria-label="刷新"><RefreshCcw size={17} /></button></div>
-        {loading ? <Loading label="载入舆情事件…" /> : items.length ? <div className="news-list">{items.map((item) => (
-          <article className="news-item" key={item.id}>
+        {!symbol && <div className="dedup-note">全部股票视图已按相同标题合并为一个事件；同一新闻对不同股票仍会独立研判，选择单只股票可查看对应结论。</div>}
+        {loading ? <Loading label="载入舆情事件…" /> : items.length ? <div className="news-list">{items.map((item) => {
+          const relatedSymbols = item.related_symbols?.length ? item.related_symbols : [item.symbol]
+          const symbolText = relatedSymbols.length > 1
+            ? `影响 ${relatedSymbols.length} 只：${relatedSymbols.slice(0, 4).join('、')}${relatedSymbols.length > 4 ? '…' : ''}`
+            : item.symbol
+          return <article className="news-item" key={item.id}>
             <div className="news-time"><strong>{formatBeijingDate(item.published_at)}</strong><span>{formatBeijingTime(item.published_at)} 北京时间</span></div>
             <div className={`sentiment-marker ${labelClass(item.label)}`}><i /></div>
-            <div className="news-copy"><div className="news-meta"><span className="symbol-chip">{item.symbol}</span><span>{item.kind === 'notice' ? '公司公告' : item.source}</span><span>{item.model || '等待分析'}</span></div><h3>{item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">{item.title}<ExternalLink size={13} /></a> : item.title}</h3><p>{item.summary || '尚未生成摘要'}</p>{item.rationale && <div className="ai-rationale"><Brain size={14} />{item.rationale}</div>}</div>
+            <div className="news-copy"><div className="news-meta"><span className="symbol-chip related-symbols" title={relatedSymbols.join('、')}>{symbolText}</span><span>{item.kind === 'notice' ? '公司公告' : item.source}</span><span>{item.model || '等待分析'}</span></div><h3>{item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">{item.title}<ExternalLink size={13} /></a> : item.title}</h3><p>{item.summary || '尚未生成摘要'}</p>{item.rationale && <div className="ai-rationale"><Brain size={14} />{item.rationale}</div>}</div>
             <div className={`sentiment-result ${labelClass(item.label)}`}><strong>{item.label}</strong><span>{item.score === null ? '—' : `${item.score > 0 ? '+' : ''}${item.score.toFixed(2)}`}</span><small>置信度 {item.confidence === null ? '—' : `${(item.confidence * 100).toFixed(0)}%`}</small></div>
           </article>
-        ))}</div> : <div className="empty-block"><ShieldAlert /><strong>当前筛选没有事件</strong><span>请同步新闻公告数据，或调整筛选条件。</span></div>}
+        })}</div> : <div className="empty-block"><ShieldAlert /><strong>当前筛选没有事件</strong><span>请同步新闻公告数据，或调整筛选条件。</span></div>}
       </section>
     </>
   )

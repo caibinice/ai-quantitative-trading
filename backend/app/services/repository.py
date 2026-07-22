@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import timedelta
 from typing import Any, TypeVar
 
 from sqlalchemy import delete, select
@@ -15,6 +16,7 @@ from app.models import (
     Stock,
     TradingCalendar,
 )
+from app.services.news_dedup import is_duplicate_news
 
 ModelT = TypeVar("ModelT")
 
@@ -87,12 +89,38 @@ def upsert_financials(db: Session, rows: Iterable[dict[str, Any]]) -> int:
 
 
 def upsert_news(db: Session, rows: Iterable[dict[str, Any]]) -> int:
+    items = list(rows)
+    if not items:
+        return 0
+    symbols = {row.get("symbol") for row in items}
+    first_time = min(row["published_at"] for row in items) - timedelta(days=3)
+    last_time = max(row["published_at"] for row in items) + timedelta(days=3)
+    existing_items = list(
+        db.scalars(
+            select(NewsItem).where(
+                NewsItem.symbol.in_(symbols),
+                NewsItem.published_at >= first_time,
+                NewsItem.published_at <= last_time,
+            )
+        ).all()
+    )
+    existing_hashes = {item.content_hash for item in existing_items}
+    candidates: dict[tuple[str | None, str], list[NewsItem]] = {}
+    for item in existing_items:
+        candidates.setdefault((item.symbol, item.kind), []).append(item)
+
     count = 0
-    for row in rows:
-        existing = db.scalar(select(NewsItem).where(NewsItem.content_hash == row["content_hash"]))
-        if existing is None:
-            db.add(NewsItem(**row))
-            count += 1
+    for row in items:
+        if row["content_hash"] in existing_hashes:
+            continue
+        bucket = candidates.setdefault((row.get("symbol"), row.get("kind", "news")), [])
+        if any(is_duplicate_news(row, existing) for existing in bucket):
+            continue
+        item = NewsItem(**row)
+        db.add(item)
+        bucket.append(item)
+        existing_hashes.add(row["content_hash"])
+        count += 1
     return count
 
 

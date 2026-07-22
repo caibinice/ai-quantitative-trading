@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import DEFAULT_STOCK_NAMES
 from app.models import JobRun, utcnow
+from app.services.news_dedup import deduplicate_persisted_news
 from app.services.provider import AkshareProvider
 from app.services.repository import ensure_stock, upsert_financials, upsert_news, upsert_prices
 
@@ -31,6 +32,7 @@ def sync_market_data(
         "news": 0,
         "notices": 0,
         "cninfo_notices": 0,
+        "deduplicated": 0,
         "errors": [],
     }
     try:
@@ -105,6 +107,8 @@ def sync_market_data(
                             "error": str(exc)[:300],
                         }
                     )
+        totals["deduplicated"] = deduplicate_persisted_news(db, symbols)
+        db.commit()
         job.status = "success" if not totals["errors"] else "partial"
         job.message = "数据同步完成"
         job.details = totals

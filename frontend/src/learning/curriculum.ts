@@ -834,7 +834,7 @@ net_return = tradable_position * prices.pct_change() - turnover * cost_rate`,
         points: [
           'published_at 是核心时间边界。',
           '指数衰减让近期事件权重更高。',
-          '同一事件重复抓取要通过 hash 去重。',
+          '同一股票的重复事件先用 hash 精确去重，再按链接、标题、梗概和时间做约 90% 近似去重。',
         ],
       },
       {

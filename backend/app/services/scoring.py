@@ -17,6 +17,7 @@ from app.models import (
     SentimentAnalysis,
 )
 from app.schemas import StrategyParameters
+from app.services.news_dedup import is_duplicate_news
 
 
 def _bounded_score(value: float, scale: float = 1.0) -> float:
@@ -105,6 +106,36 @@ def sentiment_component(
     return _bounded_score(weighted / weights if weights else 0.0, 1.3), len(events)
 
 
+def deduplicate_sentiment_events(
+    events: list[tuple[float, float, datetime, str, str, str, str]],
+) -> list[tuple[float, float, datetime]]:
+    """Defensively prevent legacy duplicate articles from multiplying a factor."""
+    kept: list[tuple[float, float, datetime, str, str, str, str]] = []
+    for event in sorted(events, key=lambda row: row[2], reverse=True):
+        signature = {
+            "title": event[3],
+            "content": event[4],
+            "source_url": event[5],
+            "published_at": event[2],
+        }
+        duplicate = any(
+            event[6] == candidate[6]
+            and is_duplicate_news(
+                signature,
+                {
+                    "title": candidate[3],
+                    "content": candidate[4],
+                    "source_url": candidate[5],
+                    "published_at": candidate[2],
+                },
+            )
+            for candidate in kept
+        )
+        if not duplicate:
+            kept.append(event)
+    return [(score, confidence, published_at) for score, confidence, published_at, *_ in kept]
+
+
 def calculate_scores(
     db: Session,
     symbols: list[str],
@@ -144,7 +175,15 @@ def calculate_scores(
         quality, quality_detail = quality_component(financials)
 
         event_rows = db.execute(
-            select(SentimentAnalysis.score, SentimentAnalysis.confidence, NewsItem.published_at)
+            select(
+                SentimentAnalysis.score,
+                SentimentAnalysis.confidence,
+                NewsItem.published_at,
+                NewsItem.title,
+                NewsItem.content,
+                NewsItem.source_url,
+                NewsItem.kind,
+            )
             .join(NewsItem, NewsItem.id == SentimentAnalysis.news_id)
             .where(
                 NewsItem.symbol == symbol,
@@ -153,7 +192,8 @@ def calculate_scores(
                 < datetime.combine(as_of + timedelta(days=1), datetime.min.time()),
             )
         ).all()
-        sentiment, event_count = sentiment_component(list(event_rows), as_of)
+        unique_events = deduplicate_sentiment_events(list(event_rows))
+        sentiment, event_count = sentiment_component(unique_events, as_of)
 
         total = round(
             momentum * parameters.momentum_weight

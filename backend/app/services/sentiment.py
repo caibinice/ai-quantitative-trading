@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.models import NewsItem, SentimentAnalysis
+from app.services.news_dedup import deduplicate_persisted_news
 
 POSITIVE_WORDS = (
     "增长",
@@ -157,6 +158,9 @@ class SentimentAnalyzer:
     ) -> int:
         if write_batch_size < 1:
             raise ValueError("write_batch_size 必须大于 0")
+        # Clean legacy same-stock duplicates before selecting pending work so
+        # one event never consumes multiple model calls for the same company.
+        deduplicate_persisted_news(db, commit=True)
         query = select(NewsItem).order_by(NewsItem.published_at.desc())
         if not force:
             query = query.where(~NewsItem.sentiment.has())

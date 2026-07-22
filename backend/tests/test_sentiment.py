@@ -124,3 +124,42 @@ def test_pending_analysis_releases_read_transaction_and_writes_in_batches(
         assert count == 5
         assert transaction_states == [False] * 5
         assert len(db.scalars(select(SentimentAnalysis)).all()) == 5
+
+
+def test_pending_analysis_calls_model_once_for_same_stock_duplicate(monkeypatch) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine, expire_on_commit=False) as db:
+        db.add_all(
+            [
+                NewsItem(
+                    symbol="000333",
+                    kind="news",
+                    title="基金经理二季度集体调仓",
+                    content="基金经理减持消费股并增持制造业股票。",
+                    source=f"来源{index}",
+                    source_url=f"https://source{index}.example.com/story/88",
+                    published_at=datetime(2026, 7, 21, 22, index),
+                    content_hash=f"duplicate-{index}",
+                )
+                for index in range(2)
+            ]
+        )
+        db.commit()
+        analyzer = SentimentAnalyzer(
+            Settings(database_url="sqlite://", llm_enabled=False, credentials_file="missing.ini")
+        )
+        calls: list[str] = []
+
+        def fake_analyze(title: str, _content: str, _kind: str) -> SentimentResult:
+            calls.append(title)
+            return SentimentResult("中性", 0, 0.8, "摘要", "理由", "test-model")
+
+        monkeypatch.setattr(analyzer, "analyze", fake_analyze)
+
+        count = analyzer.analyze_pending(db, limit=10)
+
+        assert count == 1
+        assert calls == ["基金经理二季度集体调仓"]
+        assert len(db.scalars(select(NewsItem)).all()) == 1
+        assert len(db.scalars(select(SentimentAnalysis)).all()) == 1

@@ -30,6 +30,7 @@ from app.schemas import (
     SyncRequest,
 )
 from app.services.backtest import run_backtest_from_db
+from app.services.news_dedup import group_news_for_display
 from app.services.pipeline import sync_market_data
 from app.services.repository import ensure_stock
 from app.services.scoring import calculate_scores
@@ -243,7 +244,12 @@ def sentiment_news(
         query = query.where(NewsItem.kind == kind)
     if label:
         query = query.where(SentimentAnalysis.label == label)
-    rows = db.execute(query.limit(limit)).all()
+    fetch_limit = min(2000, limit * (4 if not symbol else 3))
+    rows = db.execute(query.limit(fetch_limit)).all()
+    analyses = {item.id: analysis for item, analysis in rows}
+    groups = group_news_for_display(
+        [item for item, _analysis in rows], collapse_across_symbols=not bool(symbol)
+    )[:limit]
     return [
         {
             "id": item.id,
@@ -253,6 +259,7 @@ def sentiment_news(
             "source": item.source,
             "source_url": item.source_url,
             "published_at": beijing_iso(item.published_at, naive_is_beijing=True),
+            "related_symbols": group.related_symbols,
             "label": analysis.label if analysis else "待分析",
             "score": analysis.score if analysis else None,
             "confidence": analysis.confidence if analysis else None,
@@ -260,7 +267,8 @@ def sentiment_news(
             "rationale": analysis.rationale if analysis else "",
             "model": analysis.model if analysis else "",
         }
-        for item, analysis in rows
+        for group in groups
+        for item, analysis in [(group.item, analyses.get(group.item.id))]
     ]
 
 

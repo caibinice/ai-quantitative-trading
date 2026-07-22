@@ -75,6 +75,7 @@ export interface NewsItem {
   summary: string
   rationale: string
   model: string
+  related_symbols?: string[]
 }
 
 export interface StrategyParameters {
