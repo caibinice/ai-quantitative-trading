@@ -21,6 +21,7 @@ def sync_market_data(
     include_news: bool = True,
     include_notices: bool = True,
     provider: AkshareProvider | None = None,
+    include_prices: bool = True,
 ) -> dict[str, Any]:
     provider = provider or AkshareProvider()
     job = JobRun(job_type="market_sync", status="running", details={"symbols": symbols})
@@ -55,7 +56,7 @@ def sync_market_data(
             operations = [
                 (
                     "prices",
-                    True,
+                    include_prices,
                     lambda symbol=symbol: provider.daily_prices(symbol, start_date, end_date),
                     upsert_prices,
                 ),

@@ -14,6 +14,7 @@ from app.schemas import (
     DataQualityRequest,
     InfrastructureSyncRequest,
     ScoreRequest,
+    SentimentPipelineRequest,
     StrategyParameters,
     SyncRequest,
     WalkForwardRequest,
@@ -23,6 +24,7 @@ SUPPORTED_TASKS = {
     "market_sync",
     "infrastructure_sync",
     "sentiment_analysis",
+    "sentiment_pipeline",
     "factor_scoring",
     "backtest",
     "walk_forward",
@@ -39,6 +41,17 @@ def enqueue_task(
 ) -> ResearchTask:
     if task_type not in SUPPORTED_TASKS:
         raise ValueError(f"不支持的任务类型：{task_type}")
+    if task_type == "sentiment_pipeline":
+        existing = db.scalar(
+            select(ResearchTask)
+            .where(
+                ResearchTask.task_type == task_type,
+                ResearchTask.status.in_(("queued", "running")),
+            )
+            .order_by(ResearchTask.created_at)
+        )
+        if existing is not None:
+            return existing
     task = ResearchTask(
         task_type=task_type,
         status="queued",
@@ -173,6 +186,40 @@ def _dispatch_task(db: Session, task: ResearchTask) -> dict[str, Any]:
         _set_progress(db, task.id, 0.1, "正在分析待处理事件")
         count = SentimentAnalyzer().analyze_pending(db, request.limit, request.force)
         return {"analyzed": count}
+    if task.task_type == "sentiment_pipeline":
+        from app.services.pipeline import sync_market_data
+        from app.services.scoring import calculate_scores
+        from app.services.sentiment import SentimentAnalyzer
+
+        request = SentimentPipelineRequest(**payload)
+        symbols = request.symbols or watchlist
+        end_date = request.end_date or date.today()
+        start_date = request.start_date or end_date - timedelta(days=90)
+
+        _set_progress(db, task.id, 0.08, "正在抓取新闻与公告")
+        sync_result = sync_market_data(
+            db,
+            symbols,
+            start_date,
+            end_date,
+            include_financials=False,
+            include_news=True,
+            include_notices=True,
+            include_prices=False,
+        )
+        _set_progress(db, task.id, 0.58, "正在分析去重后的待处理事件")
+        analyzed = SentimentAnalyzer().analyze_pending(
+            db, request.analysis_limit, request.force
+        )
+        _set_progress(db, task.id, 0.86, "正在更新 AI 选股评分")
+        scored = calculate_scores(db, symbols, end_date, parameters)
+        return {
+            "message": "舆情抓取、去重、AI 分析与选股评分已按顺序完成",
+            "sync": sync_result,
+            "analyzed": analyzed,
+            "score_date": end_date.isoformat(),
+            "scored": len(scored),
+        }
     if task.task_type == "factor_scoring":
         from app.services.scoring import calculate_scores
 

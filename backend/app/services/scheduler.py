@@ -27,12 +27,7 @@ def scheduled_market_sync() -> None:
 
 def scheduled_news_analysis() -> None:
     with SessionLocal() as db:
-        enqueue_task(
-            db,
-            "market_sync",
-            {"include_financials": False, "include_news": True, "include_notices": True},
-        )
-        enqueue_task(db, "sentiment_analysis", {"limit": 200}, priority=110)
+        enqueue_task(db, "sentiment_pipeline", {"analysis_limit": 200})
 
 
 def scheduled_scoring() -> None:

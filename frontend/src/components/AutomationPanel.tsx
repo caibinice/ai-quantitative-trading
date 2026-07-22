@@ -1,7 +1,8 @@
-import { Bot, CheckCircle2, Clock3, Save, TimerReset } from 'lucide-react'
+import { Bot, CheckCircle2, Clock3, Play, Save, TimerReset } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { formatBeijingDateTime } from '../dateTime'
+import type { ResearchTask } from '../types'
 
 interface AutomationSettings {
   news_analysis_enabled: boolean
@@ -14,11 +15,12 @@ interface AutomationSettings {
   updated_at: string | null
 }
 
-export function AutomationPanel({ location }: { location: 'sentiment' | 'tasks' }) {
+export function AutomationPanel({ onTaskCreated }: { onTaskCreated?: () => void }) {
   const [settings, setSettings] = useState<AutomationSettings | null>(null)
   const [interval, setIntervalHours] = useState(6)
   const [enabled, setEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [running, setRunning] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -53,12 +55,33 @@ export function AutomationPanel({ location }: { location: 'sentiment' | 'tasks' 
     }
   }
 
+  const runNow = async () => {
+    setRunning(true)
+    setError('')
+    setMessage('')
+    try {
+      const task = await api<ResearchTask>('/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          task_type: 'sentiment_pipeline',
+          payload: { analysis_limit: 200 },
+        }),
+      })
+      setMessage(`舆情全流程任务 #${task.id} 已创建或复用：抓取 → 去重 → AI 分析 → 评分。`)
+      onTaskCreated?.()
+    } catch (reason) {
+      setError((reason as Error).message)
+    } finally {
+      setRunning(false)
+    }
+  }
+
   return (
-    <section className={`panel automation-panel automation-panel-${location}`}>
+    <section className="panel automation-panel">
       <div className="automation-copy">
         <span className="section-kicker">AUTOMATED SENTIMENT PIPELINE</span>
         <h2><TimerReset size={19} /> 自动舆情流水线</h2>
-        <p>按固定间隔依次抓取新闻与公告，再分析尚未处理的事件。保存后无需重启服务。</p>
+        <p>自动或手动严格按序执行：抓取新闻/公告 → 去重 → AI 分析 → 更新选股评分；不会重复同步行情和财务。</p>
       </div>
       <label className="automation-toggle">
         <input
@@ -97,9 +120,14 @@ export function AutomationPanel({ location }: { location: 'sentiment' | 'tasks' 
           <strong>{formatNextRun(settings?.next_run_at, enabled)}</strong>
         </div>
       </div>
-      <button className="button primary automation-save" disabled={saving} onClick={save}>
-        <Save size={15} /> {saving ? '保存中…' : '保存并立即生效'}
-      </button>
+      <div className="automation-actions">
+        <button className="button automation-run" disabled={running} onClick={runNow}>
+          <Play size={15} /> {running ? '正在入队…' : '立即执行全流程'}
+        </button>
+        <button className="button primary automation-save" disabled={saving} onClick={save}>
+          <Save size={15} /> {saving ? '保存中…' : '保存并立即生效'}
+        </button>
+      </div>
       {(message || error) && (
         <div className={`automation-feedback ${error ? 'error' : ''}`}>
           {!error && <CheckCircle2 size={14} />}

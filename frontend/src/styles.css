@@ -191,7 +191,7 @@ tbody tr:hover { background: #11223288; }
 .signal-tag { padding: 4px 7px; border-radius: 4px; font-size: 11px; }.signal-tag.positive { color: var(--green); background: #32d6a011; }.signal-tag.negative { color: var(--red); background: #ff6b7811; }.signal-tag.neutral { color: var(--amber); background: #f7b95511; }
 
 .sentiment-overview { display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px; margin-bottom: 15px; }
-.automation-panel { margin-bottom: 15px; padding: 17px 19px; display: grid; grid-template-columns: minmax(250px, 1.5fr) auto 128px minmax(210px, .8fr) minmax(175px, .7fr) auto; gap: 16px; align-items: center; }
+.automation-panel { margin-bottom: 15px; padding: 17px 19px; display: grid; grid-template-columns: minmax(250px, 1.5fr) auto 128px minmax(210px, .8fr) minmax(175px, .7fr) minmax(180px, auto); gap: 16px; align-items: center; }
 .automation-copy h2 { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; font-size: 16px; }
 .automation-copy h2 svg { color: var(--cyan); }
 .automation-copy p { max-width: 470px; margin: 0; color: #687e93; font-size: 11px; line-height: 1.55; }
@@ -209,7 +209,8 @@ tbody tr:hover { background: #11223288; }
 .automation-next > svg { color: var(--cyan); }
 .automation-model strong, .automation-next strong { display: block; color: #b8cad9; font-size: 12px; }
 .automation-model > small { grid-column: 2; color: var(--violet); font-size: 10px; }
-.automation-save { white-space: nowrap; }
+.automation-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.automation-actions .button { white-space: nowrap; }
 .automation-feedback { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin-top: -7px; color: var(--green); font-size: 11px; }
 .automation-feedback.error { color: var(--red); }
 .sentiment-gauge { padding: 19px 22px; display: flex; align-items: center; justify-content: space-between; }
@@ -287,6 +288,7 @@ tbody tr:hover { background: #11223288; }
 .quick-task-grid button:hover { border-color: #2f667c; background: #102333; }
 .quick-task-grid button > span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 7px; color: var(--cyan); background: #37c6e712; }
 .quick-task-grid strong, .quick-task-grid small { display: block; }.quick-task-grid strong { color: #bdcedf; font-size: 12px; }.quick-task-grid small { margin-top: 4px; color: #5c7288; font-size: 10px; line-height: 1.5; }
+.quick-task-note { margin: 13px 0 0; color: #6b8196; font-size: 12px; line-height: 1.65; }
 .task-table { margin-top: 15px; }.task-status { padding: 4px 7px; border-radius: 4px; font-size: 11px; }.task-status.queued { color: var(--amber); background: #f7b95511; }.task-status.running { color: var(--cyan); background: #37c6e711; }.task-status.success { color: var(--green); background: #32d6a011; }.task-status.failed { color: var(--red); background: #ff6b7811; }.task-status.cancelled { color: #8a9bad; background: #77869c11; }
 .task-progress { min-width: 95px; display: flex; align-items: center; gap: 7px; }.task-progress i { width: 62px; height: 4px; overflow: hidden; border-radius: 5px; background: #1a2d3f; }.task-progress b { display: block; height: 100%; background: linear-gradient(90deg, #238baa, var(--cyan)); }.task-progress span { color: #647b90; font-size: 11px; }.task-message { max-width: 230px; overflow: hidden; color: #71869b; text-overflow: ellipsis; white-space: nowrap; }.row-actions { display: flex; gap: 5px; }.row-actions button, .text-button { border: 0; color: #71879c; background: transparent; }.row-actions button:hover, .text-button:hover { color: var(--cyan); }
 
@@ -494,7 +496,7 @@ tbody tr:hover { background: #11223288; }
   .chapter-hero-main { align-items: flex-start; flex-direction: column; }.chapter-meta { flex-wrap: wrap; }
   .quiz-options, .resource-list { grid-template-columns: 1fr; }
   .chapter-pager { flex-direction: column; }.chapter-pager .button { width: 100%; }
-  .automation-panel { grid-template-columns: 1fr 1fr; }.automation-copy, .automation-feedback { grid-column: 1 / -1; }.automation-save { width: 100%; }
+  .automation-panel { grid-template-columns: 1fr 1fr; }.automation-copy, .automation-feedback, .automation-actions { grid-column: 1 / -1; }.automation-actions { width: 100%; }.automation-actions .button { flex: 1; }
   .ranking-proof-grid, .sentiment-source-grid { grid-template-columns: 1fr; }
   .textbook-aside, .worked-example, .kline-primer { grid-template-columns: 1fr; }
   .candlestick-board { gap: 22px; padding-left: 42px; padding-right: 24px; }

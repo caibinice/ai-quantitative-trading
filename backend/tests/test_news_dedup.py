@@ -74,6 +74,25 @@ def test_cross_source_near_duplicate_without_shared_url() -> None:
     assert is_duplicate_news(first, second)
 
 
+def test_publication_times_within_72_hours_receive_no_similarity_penalty() -> None:
+    first = _row("000333")
+    second = _row(
+        "000333",
+        title="判若两基：张坤 刘彦春 朱少醒二季度集体破圈调仓基金动向",
+        source="两天后转载来源",
+    )
+    second["source_url"] = "https://repost.example.cn/news/88"
+    second["content"] = "明星基金经理集体调仓，减持消费股并增持制造业股票。"
+    second["published_at"] = PUBLISHED + timedelta(hours=72)
+
+    delayed_score = news_similarity(news_signature(first), news_signature(second))
+    second["published_at"] = PUBLISHED
+    immediate_score = news_similarity(news_signature(first), news_signature(second))
+
+    assert delayed_score == immediate_score
+    assert delayed_score >= 0.90
+
+
 def test_upsert_deduplicates_per_stock_but_preserves_cross_stock_analysis() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

@@ -61,6 +61,22 @@ class AnalyzeRequest(BaseModel):
     force: bool = False
 
 
+class SentimentPipelineRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list)
+    start_date: date | None = None
+    end_date: date | None = None
+    analysis_limit: int = Field(default=200, ge=1, le=500)
+    force: bool = False
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_sentiment_dates(cls, value: date | None, info):
+        start = info.data.get("start_date")
+        if value is not None and start is not None and value < start:
+            raise ValueError("end_date 不能早于 start_date")
+        return value
+
+
 class ScoreRequest(BaseModel):
     symbols: list[str] = Field(default_factory=list)
     as_of: date | None = None

@@ -2,7 +2,6 @@ import { Brain, Database, ExternalLink, Filter, RefreshCcw, ShieldAlert } from '
 import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import { AutomationPanel } from '../components/AutomationPanel'
 import { PageHeader } from '../components/PageHeader'
 import { formatBeijingDate, formatBeijingTime } from '../dateTime'
 import { ErrorPanel, Loading } from '../components/StatePanel'
@@ -60,7 +59,6 @@ export function Sentiment() {
     <>
       <PageHeader eyebrow="Sentiment intelligence" title="舆情与公告事件雷达" description="定时采集公开新闻和公告，再由大模型输出结构化利好/中性/利空、置信度与理由。" actions={<button className="button primary" onClick={analyze} disabled={analyzing}><Brain size={17} />{analyzing ? 'AI 分析中…' : '分析待处理事件'}</button>} />
       {error && <div className="inline-alert">{error}</div>}
-      <AutomationPanel location="sentiment" />
       <section className="panel sentiment-source-panel">
         <div className="panel-head">
           <div><span className="section-kicker">SOURCE CATALOG</span><h2>舆情与公告数据源</h2></div>

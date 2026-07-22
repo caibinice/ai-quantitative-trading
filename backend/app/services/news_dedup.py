@@ -86,7 +86,10 @@ def news_similarity(first: NewsSignature, second: NewsSignature) -> float:
     gap_hours = abs((first.published_at - second.published_at).total_seconds()) / 3600
     if gap_hours > MAX_EVENT_GAP_HOURS:
         return 0.0
-    time_score = 1.0 if gap_hours <= 6 else 0.98 if gap_hours <= 24 else 0.94
+    # Syndication and rewritten reposts often lag the original by one or two days.
+    # Inside the configured 72-hour event window, publication time therefore
+    # acts only as a hard eligibility gate and does not reduce similarity.
+    time_score = 1.0
 
     if first.title and first.title == second.title:
         return 1.0

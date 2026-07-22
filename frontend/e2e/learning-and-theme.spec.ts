@@ -70,12 +70,7 @@ test('learning sources download and automation settings are visible', async ({ p
   expect(download.suggestedFilename()).toBe('README.md')
 
   await page.goto('sentiment')
-  await expect(page.locator('.automation-panel')).toBeVisible()
-  await expect(page.locator('.automation-model strong')).toHaveText('deepseek-v4-pro')
-  const interval = Number(await page.locator('.automation-interval input').inputValue())
-  expect(interval).toBeGreaterThanOrEqual(1)
-  expect(interval).toBeLessThanOrEqual(48)
-  await expect(page.locator('.automation-model small')).toContainText('备用 Key 就绪')
+  await expect(page.locator('.automation-panel')).toHaveCount(0)
   await expect(page.locator('.sentiment-source-grid article')).toHaveCount(5)
   await expect(page.locator('.dedup-note')).toContainText('按相同标题合并为一个事件')
   const visibleTitles = (await page.locator('.news-copy h3').allTextContents())
@@ -85,5 +80,15 @@ test('learning sources download and automation settings are visible', async ({ p
   if (await positiveResult.count()) {
     await expect(positiveResult).toHaveCSS('color', 'rgb(8, 127, 91)')
   }
-  await page.screenshot({ path: '../output/playwright/sentiment-automation.png', fullPage: true })
+
+  await page.goto('tasks')
+  await expect(page.locator('.automation-panel')).toBeVisible()
+  await expect(page.locator('.automation-model strong')).toHaveText('deepseek-v4-pro')
+  const interval = Number(await page.locator('.automation-interval input').inputValue())
+  expect(interval).toBeGreaterThanOrEqual(1)
+  expect(interval).toBeLessThanOrEqual(48)
+  await expect(page.locator('.automation-model small')).toContainText('备用 Key 就绪')
+  await expect(page.getByRole('button', { name: '立即执行全流程' })).toBeVisible()
+  await expect(page.locator('.quick-task-note')).toContainText('彼此不会自动串联')
+  await page.screenshot({ path: '../output/playwright/tasks-automation.png', fullPage: true })
 })
