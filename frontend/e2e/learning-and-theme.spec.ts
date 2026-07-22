@@ -42,28 +42,22 @@ test('all learning chapters expose three detailed lessons', async ({ page }) => 
     'capstone',
   ]
 
-  for (const [chapterIndex, chapterId] of chapterIds.entries()) {
-    if (chapterIndex === 0) {
+  for (const chapterId of chapterIds) {
+    await test.step(`chapter ${chapterId}`, async () => {
       const response = await page.goto(`learn/${chapterId}`)
       expect(response?.status(), `chapter ${chapterId} should load`).toBe(200)
-    } else {
-      await page.evaluate((id) => {
-        window.history.pushState({}, '', `/quant/learn/${id}`)
-        window.dispatchEvent(new PopStateEvent('popstate'))
-      }, chapterId)
-    }
-    await expect(page.locator('.concept-card')).toHaveCount(3)
-    if (chapterId === 'market-basics') {
-      await expect(page.locator('.kline-primer')).toBeVisible()
-      await expect(page.locator('.textbook-section')).toHaveCount(4)
-      await page.screenshot({ path: '../output/playwright/kline-textbook.png', fullPage: true })
-    }
-    await page.locator('.concept-card').first().click()
-    await expect(page.locator('.concept-flow-node').first()).toBeVisible()
-    expect(await page.locator('.concept-flow-node').count()).toBeGreaterThan(2)
-    expect(await page.locator('.concept-prose > p').count()).toBeGreaterThanOrEqual(2)
-    await expect(page.locator('.concept-list-card.pitfall > p')).toHaveCount(3)
-    await page.waitForTimeout(200)
+      await expect(page.locator('.concept-card')).toHaveCount(3)
+      if (chapterId === 'market-basics') {
+        await expect(page.locator('.kline-primer')).toBeVisible()
+        await expect(page.locator('.textbook-section')).toHaveCount(4)
+        await page.screenshot({ path: '../output/playwright/kline-textbook.png', fullPage: true })
+      }
+      await page.locator('.concept-card').first().click()
+      await expect(page.locator('.concept-flow-node').first()).toBeVisible()
+      expect(await page.locator('.concept-flow-node').count()).toBeGreaterThan(2)
+      expect(await page.locator('.concept-prose > p').count()).toBeGreaterThanOrEqual(2)
+      await expect(page.locator('.concept-list-card.pitfall > p')).toHaveCount(3)
+    })
   }
   await page.screenshot({ path: '../output/playwright/learning-detail.png', fullPage: true })
 })

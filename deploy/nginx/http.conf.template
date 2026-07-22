@@ -40,8 +40,14 @@ server {
         return 301 /quant/;
     }
 
+    location /quant/assets/ {
+        root __APP_ROOT__/www;
+        try_files $uri =404;
+        expires off;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
     location /quant/ {
-        limit_req zone=ai_quant_limit burst=50 nodelay;
         root __APP_ROOT__/www;
         try_files $uri $uri/ /quant/index.html;
     }
