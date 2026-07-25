@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import base64
-import hashlib
 import json
+import os
 import secrets
 import socket
 import subprocess
@@ -42,7 +41,11 @@ def build_archive(release_id: str) -> Path:
     return archive
 
 
-def build_app_env(public_ip: str, blog_admin_token: str) -> bytes:
+def build_app_env(
+    public_ip: str,
+    blog_admin_token: str,
+    action_auth: dict[str, str],
+) -> bytes:
     credentials = read_credentials()
     mysql = credentials["mysql.remote"]
     llm = credentials["deepseek.api"]
@@ -74,31 +77,11 @@ def build_app_env(public_ip: str, blog_admin_token: str) -> bytes:
         "BLOG_NEWS_CACHE_SECONDS": "1800",
         "BLOG_NEWS_STALE_SECONDS": "86400",
         "BLOG_NEWS_SEED_FILE": f"{APP_ROOT}/shared/blog-news-seed.json",
+        "ACTION_PASSWORD": action_auth["password"],
+        "ACTION_TOKEN_SECRET": action_auth["tokenSecret"],
+        "ACTION_TOKEN_TTL_MINUTES": "30",
     }
     return "".join(f"{key}={value}\n" for key, value in values.items()).encode()
-
-
-def load_or_create_web_auth() -> tuple[str, str]:
-    path = STATE_DIR / "web-auth.json"
-    credentials = read_credentials()
-    configured = credentials["web.auth"] if credentials.has_section("web.auth") else {}
-    if configured.get("username") and configured.get("password"):
-        value = {
-            "username": configured["username"],
-            "password": configured["password"],
-        }
-        path.parent.mkdir(exist_ok=True)
-        path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
-        return value["username"], value["password"]
-    if path.exists():
-        value = json.loads(path.read_text(encoding="utf-8"))
-        return value["username"], value["password"]
-    value = {
-        "username": "quantadmin",
-        "password": secrets.token_urlsafe(18),
-    }
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
-    return value["username"], value["password"]
 
 
 def load_or_create_blog_admin_token() -> str:
@@ -118,6 +101,30 @@ def load_or_create_blog_admin_token() -> str:
             json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8"
         )
     return value["token"]
+
+
+def load_or_create_action_auth() -> dict[str, str]:
+    blog_path = ROOT_DIR.parent / "ai-blog" / ".deploy" / "action-auth.json"
+    quant_path = STATE_DIR / "action-auth.json"
+    source = blog_path if blog_path.exists() else quant_path
+    if source.exists():
+        value = json.loads(source.read_text(encoding="utf-8"))
+    else:
+        password = os.environ.get("AI_PLATFORM_ACTION_PASSWORD", "")
+        if not password:
+            raise RuntimeError(
+                "Missing ignored action-auth.json and AI_PLATFORM_ACTION_PASSWORD."
+            )
+        value = {
+            "password": password,
+            "tokenSecret": secrets.token_urlsafe(48),
+        }
+    if not value.get("password") or not value.get("tokenSecret"):
+        raise RuntimeError("action-auth.json is incomplete.")
+    for path in (blog_path, quant_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    return value
 
 
 def build_blog_news_seed() -> bytes:
@@ -146,11 +153,6 @@ def build_blog_news_seed() -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode()
 
 
-def htpasswd(username: str, password: str) -> bytes:
-    digest = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
-    return f"{username}:{{SHA}}{digest}\n".encode()
-
-
 def main() -> None:
     commit = subprocess.check_output(
         ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT_DIR, text=True
@@ -160,21 +162,22 @@ def main() -> None:
     credentials = read_credentials()
     ssh = credentials["remote.ssh"]
     public_ip = socket.gethostbyname(ssh["host"])
-    username, password = load_or_create_web_auth()
     blog_admin_token = load_or_create_blog_admin_token()
+    action_auth = load_or_create_action_auth()
 
     remote = RemoteClient()
     archive_remote = f"/tmp/ai-quant-{release_id}.tar.gz"
     env_remote = f"/tmp/ai-quant-{release_id}.env"
-    auth_remote = f"/tmp/ai-quant-{release_id}.htpasswd"
     news_remote = f"/tmp/ai-quant-{release_id}-blog-news.json"
     wrapper_remote = f"/tmp/ai-quant-{release_id}.sh"
     release_remote = f"{APP_ROOT}/releases/{release_id}"
     try:
         print(f"Uploading release {release_id}...")
         remote.upload_file(archive, archive_remote)
-        remote.upload_bytes(build_app_env(public_ip, blog_admin_token), env_remote)
-        remote.upload_bytes(htpasswd(username, password), auth_remote)
+        remote.upload_bytes(
+            build_app_env(public_ip, blog_admin_token, action_auth),
+            env_remote,
+        )
         remote.upload_bytes(build_blog_news_seed(), news_remote, 0o644)
         wrapper = f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -182,12 +185,11 @@ mkdir -p {APP_ROOT}/releases {APP_ROOT}/shared
 mkdir -p {release_remote}
 tar -xzf {archive_remote} -C {release_remote}
 install -m 600 {env_remote} {APP_ROOT}/shared/app.env
-install -m 640 {auth_remote} {APP_ROOT}/shared/htpasswd
 install -m 644 {news_remote} {APP_ROOT}/shared/blog-news-seed.json
 chmod +x {release_remote}/deploy/remote/*.sh
 bash {release_remote}/deploy/remote/install.sh \
   {APP_ROOT} {release_remote} {ssh['user']} {public_ip}
-rm -f {archive_remote} {env_remote} {auth_remote} {news_remote} {wrapper_remote}
+rm -f {archive_remote} {env_remote} {news_remote} {wrapper_remote}
 """
         remote.upload_bytes(wrapper.encode(), wrapper_remote, 0o700)
         remote.run(f"/bin/bash {wrapper_remote}", root=True, timeout=2400)
@@ -201,9 +203,8 @@ rm -f {archive_remote} {env_remote} {auth_remote} {news_remote} {wrapper_remote}
         archive.unlink(missing_ok=True)
 
     print(f"PUBLIC_URL=https://{public_ip}/quant/")
-    print(f"WEB_USERNAME={username}")
-    print(f"WEB_PASSWORD_FILE={STATE_DIR / 'web-auth.json'}")
     print(f"BLOG_ADMIN_TOKEN_FILE={STATE_DIR / 'blog-admin.json'}")
+    print(f"ACTION_AUTH_FILE={STATE_DIR / 'action-auth.json'}")
     print(f"RELEASE={release_id}")
 
 

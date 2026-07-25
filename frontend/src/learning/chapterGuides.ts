@@ -421,7 +421,7 @@ export const chapterGuides: Record<string, ChapterGuide> = {
       {
         title: '3. 部署、资源与安全边界',
         paragraphs: [
-          '当前部署用 Nginx 提供 HTTPS 和 Basic Auth，静态前端由 Nginx 服务，FastAPI 与 Worker 作为 systemd 进程运行，MySQL 在远程数据库。发布脚本上传带提交号的 release，再切换 current 软链接，便于定位版本。',
+          '当前部署用 Nginx 提供 HTTPS 和静态前端，FastAPI 对采集、AI、回测和配置写操作签发短期令牌；Worker 与调度器直接调用服务层。FastAPI 与 Worker 作为 systemd 进程运行，MySQL 在远程数据库。发布脚本上传带提交号的 release，再切换 current 软链接，便于定位版本。',
           '凭据不进入 Git，不在日志打印。网页只暴露研究 API，不暴露数据库和 SSH。生产环境还应定期备份、限制安全组来源、更新证书并监控磁盘与内存。研究站点即使只有一个用户也不能忽视公网攻击面。',
         ],
       },

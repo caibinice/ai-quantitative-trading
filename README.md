@@ -111,15 +111,15 @@ user=普通 SSH 用户
 password=SSH 密码
 root_password=可通过 su 使用的 root 密码
 
-[web.auth]
-username=你的网页用户名
-password=只保存在本机的网页密码
 ```
 
-首次及后续发布都使用同一条命令：
+首次发布先通过进程环境提供操作口令，脚本会生成并保存一个不提交 Git
+的签名密钥；后续发布复用 `.deploy/action-auth.json`：
 
 ```powershell
+$env:AI_PLATFORM_ACTION_PASSWORD='<your-operation-password>'
 pwsh -File scripts/deploy.ps1
+Remove-Item Env:AI_PLATFORM_ACTION_PASSWORD
 ```
 
 它会依次完成：
@@ -132,13 +132,22 @@ pwsh -File scripts/deploy.ps1
 6. 每天两次检查证书续期，成功后热加载 Nginx；
 7. 执行 API 健康检查；失败时自动恢复上一个 release。
 
-Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用 `ai-quant-cert-renew.timer` 太久。发布会优先读取 `credentials.txt` 的 `[web.auth]`；未配置时才生成随机网页账号。最终凭据状态保存在本机、不提交 Git 的：
+Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用
+`ai-quant-cert-renew.timer` 太久。操作口令与短期签名密钥保存在本机、
+不提交 Git 的：
 
 ```text
-.deploy/web-auth.json
+.deploy/action-auth.json
 ```
 
-浏览器访问 `https://服务器公网IP/quant/`，输入其中的用户名和密码。根路径会跳转到 `/quant/`，前端、API 和文档分别位于 `/quant/`、`/quant/api/` 和 `/quant/docs`，便于同一服务器以后部署其他路径应用。HTTP Basic Auth 只在 HTTPS 上发送，并对请求做基础限速；80 端口只负责 ACME 验证和跳转。API 只监听服务器 `127.0.0.1:8000`，外网不能绕过 Nginx 登录。
+浏览器访问 `https://服务器公网IP/quant/` 可直接查看行情、研究结果和
+课程。采集、AI 分析、评分、回测、任务、Walk-forward、数据质量和自动化
+配置等写操作会弹出密码框，由 FastAPI 验证后签发 30 分钟令牌；密码不写
+入前端存储。APScheduler 和 Worker 直接调用服务层，不经过网页接口，因此
+后台自动调度无需验证。API 只监听服务器 `127.0.0.1:8000`。
+
+生产构建关闭 source map，将 React、ECharts 等拆为 `vendor-*`，只对自有
+业务 chunk 做保守混淆。混淆仅增加直接阅读成本，不能代替后端鉴权。
 
 常用运维命令：
 
@@ -358,7 +367,7 @@ ai-quantitative-trading/
 - 当前回测按收盘到收盘近似执行，未建模涨跌停、停牌、无法成交、印花税差异和容量冲击。
 - 免费业绩报表接口按报告期抓取全市场后过滤股票池，建议放入队列并控制回溯季度数量。
 - 当前远程 MariaDB 使用普通行锁认领任务；默认单 Worker，增加多个 Worker 会安全串行等待但吞吐不会线性提升。
-- 单用户网页使用 Nginx Basic Auth；若未来开放给多人，需要升级为应用级账号、权限和审计系统。
+- 页面公开，敏感网页操作使用后端短期令牌；若未来开放多人协作，需要升级为账号、RBAC 和审计系统。
 - 公网 IP 证书有效期很短，依赖 systemd timer 自动续期；更换公网 IP 后需要重新发布并签发证书。
 - 合成演示数据只用于验证界面和流程，绝不能用于评价策略有效性。
 - 情绪模型会犯错；应抽样复核，并保存模型版本、提示词和原文链接。

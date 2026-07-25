@@ -43,8 +43,6 @@ mv -Tf "$APP_ROOT/www/quant.next" "$APP_ROOT/www/quant"
 chown -R "$APP_USER:$APP_USER" "$RELEASE_DIR"
 chown "$APP_USER:$APP_USER" "$SHARED/app.env"
 chmod 600 "$SHARED/app.env"
-chown root:nginx "$SHARED/htpasswd"
-chmod 640 "$SHARED/htpasswd"
 chmod 755 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/www" "$RELEASE_DIR" "$SHARED" "$SHARED/acme"
 
 render() {

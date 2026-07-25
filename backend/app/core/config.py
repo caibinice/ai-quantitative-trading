@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     blog_news_stale_seconds: int = 86400
     blog_news_seed_file: str = ""
 
+    action_password: str = ""
+    action_token_secret: str = ""
+    action_token_ttl_minutes: int = 30
+
     @model_validator(mode="after")
     def fill_from_credentials(self) -> Settings:
         path = Path(self.credentials_file)

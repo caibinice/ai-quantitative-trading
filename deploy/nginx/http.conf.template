@@ -3,11 +3,7 @@ server {
     listen [::]:80 default_server;
     server_name _;
 
-    auth_basic "AI Quant Research Cockpit";
-    auth_basic_user_file __APP_ROOT__/shared/htpasswd;
-
     location ^~ /.well-known/acme-challenge/ {
-        auth_basic off;
         root __APP_ROOT__/shared/acme;
         default_type text/plain;
     }

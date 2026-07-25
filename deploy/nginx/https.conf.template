@@ -30,9 +30,6 @@ server {
     add_header Referrer-Policy strict-origin-when-cross-origin always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
-    auth_basic "AI Quant Research Cockpit";
-    auth_basic_user_file __APP_ROOT__/shared/htpasswd;
-
     location /quant/api/ {
         limit_req zone=ai_quant_limit burst=50 nodelay;
         proxy_pass http://127.0.0.1:8000/api/;
