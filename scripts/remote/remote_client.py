@@ -12,15 +12,33 @@ import paramiko
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 STATE_DIR = ROOT_DIR / ".deploy"
+SHARED_CREDENTIALS = ROOT_DIR.parent / "ai-blog" / "credentials.txt"
+
+
+def _scoped_credentials(
+    parser: configparser.ConfigParser, namespace: str
+) -> configparser.ConfigParser:
+    resolved = configparser.ConfigParser(interpolation=None)
+    prefix = f"{namespace}."
+    for section in parser.sections():
+        if not section.startswith(prefix):
+            resolved[section] = dict(parser[section])
+    for section in parser.sections():
+        if section.startswith(prefix):
+            resolved[section.removeprefix(prefix)] = dict(parser[section])
+    return resolved
 
 
 def read_credentials() -> configparser.ConfigParser:
-    path = ROOT_DIR / "credentials.txt"
+    local = ROOT_DIR / "credentials.txt"
+    path = local if local.exists() else SHARED_CREDENTIALS
     if not path.exists():
-        raise RuntimeError("缺少 credentials.txt，无法连接远程服务器。")
+        raise RuntimeError(
+            "缺少项目 credentials.txt 和 ai-blog/credentials.txt，无法连接远程服务器。"
+        )
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(path, encoding="utf-8")
-    return parser
+    return parser if path == local else _scoped_credentials(parser, "quant")
 
 
 class RemoteClient:

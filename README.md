@@ -101,7 +101,9 @@ Demo 也可以在项目根目录直接运行：
 
 当前生产方案面向 2 核 2GB Linux 服务器，使用 Nginx、单进程 FastAPI、轻量常驻 Worker 和 systemd。Worker 空闲时只加载队列层；处理 pandas/AKShare 重任务后空闲 30 秒会退出，再由 systemd 拉起一个干净的轻量进程，避免长期占用内存。服务器无需安装 Node.js，也不运行 Docker。
 
-先在不会提交到 Git 的 `credentials.txt` 中配置：
+先在不会提交到 Git 的项目 `credentials.txt` 中配置；如果项目文件不
+存在，会读取兄弟目录 `ai-blog/credentials.txt` 中的通用段和
+`quant.*` 覆盖段：
 
 ```ini
 [remote.ssh]

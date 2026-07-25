@@ -9,6 +9,13 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
+LOCAL_CREDENTIALS_FILE = ROOT_DIR / "credentials.txt"
+SHARED_CREDENTIALS_FILE = ROOT_DIR.parent / "ai-blog" / "credentials.txt"
+DEFAULT_CREDENTIALS_FILE = (
+    LOCAL_CREDENTIALS_FILE
+    if LOCAL_CREDENTIALS_FILE.exists()
+    else SHARED_CREDENTIALS_FILE
+)
 DEFAULT_WATCHLIST = (
     "000001,000333,000651,000858,002415,002594,300750,600000,"
     "600036,600276,600519,601318,601398,601857,601899"
@@ -37,7 +44,8 @@ def _read_section(path: Path, target: str) -> dict[str, str]:
     if not path.exists():
         return {}
     current = ""
-    result: dict[str, str] = {}
+    common: dict[str, str] = {}
+    scoped: dict[str, str] = {}
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
@@ -45,10 +53,11 @@ def _read_section(path: Path, target: str) -> dict[str, str]:
         if line.startswith("[") and line.endswith("]"):
             current = line[1:-1]
             continue
-        if current == target and "=" in line:
+        if current in {target, f"quant.{target}"} and "=" in line:
             key, value = line.split("=", 1)
-            result[key.strip()] = value.strip()
-    return result
+            destination = scoped if current.startswith("quant.") else common
+            destination[key.strip()] = value.strip()
+    return {**common, **scoped}
 
 
 class Settings(BaseSettings):
@@ -65,7 +74,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     database_url: str = ""
     database_echo: bool = False
-    credentials_file: str = str(ROOT_DIR / "credentials.txt")
+    credentials_file: str = str(DEFAULT_CREDENTIALS_FILE)
 
     llm_enabled: bool = True
     llm_base_url: str = ""
