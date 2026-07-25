@@ -307,3 +307,14 @@ class DataQualityIssue(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class BlogComment(Base):
+    __tablename__ = "aq_blog_comments"
+    __table_args__ = (Index("ix_aq_blog_comments_created", "created_at", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    display_name: Mapped[str] = mapped_column(String(40), default="Anonymous")
+    email: Mapped[str] = mapped_column(String(254))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

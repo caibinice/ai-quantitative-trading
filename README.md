@@ -151,6 +151,13 @@ pwsh -File scripts/start.ps1    # 一键恢复
 
 服务器只需要安全组放行 80 和 443；8080 不使用。发布文件位于 `/opt/ai-quantitative-trading`，保留最近 5 个 release；应用密钥只保存在服务器 `shared/app.env`。
 
+博客留言与 AI 动态复用这个 FastAPI 服务。公开接口位于
+`/api/blog/comments` 与 `/api/blog/news`；邮箱只保存在
+`aq_blog_comments`，不会出现在公开响应。管理接口使用独立 Bearer
+令牌，发布脚本会生成至少 32 字节随机值，并同步保存到不提交 Git 的
+`.deploy/blog-admin.json` 与相邻博客仓库的同名文件。浏览器管理页只把
+令牌放进当前标签页的 `sessionStorage`。
+
 ## 配置数据库与大模型
 
 复制示例配置：
@@ -170,6 +177,7 @@ LLM_API_KEY_BACKUP=your-backup-key
 LLM_MODEL=deepseek-v4-pro
 LLM_THINKING_ENABLED=true
 LLM_REASONING_EFFORT=high
+BLOG_ADMIN_TOKEN=replace-with-at-least-32-random-bytes
 ```
 
 本工作区还支持读取根目录、不会被 Git 提交的 `credentials.txt`：

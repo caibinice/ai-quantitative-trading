@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     infrastructure_cron: str = "10 8 * * 6"
     data_quality_cron: str = "10 20 * * 1-5"
 
+    blog_admin_token: str = ""
+    blog_news_cache_seconds: int = 1800
+    blog_news_stale_seconds: int = 86400
+    blog_news_seed_file: str = ""
+
     @model_validator(mode="after")
     def fill_from_credentials(self) -> Settings:
         path = Path(self.credentials_file)

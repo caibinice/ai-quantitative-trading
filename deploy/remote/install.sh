@@ -69,12 +69,17 @@ systemctl enable ai-quant-api.service ai-quant-worker.service ai-quant-cert-rene
 systemctl restart ai-quant-api.service ai-quant-worker.service
 
 echo "[5/8] Configuring Nginx bootstrap endpoint"
-if [[ ! -f /etc/nginx/nginx.conf.dist ]]; then
-  cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.dist
+UNIFIED_SITE=/etc/nginx/conf.d/ai-platform.conf
+if [[ -f "$UNIFIED_SITE" ]] && grep -q 'ai-blog-unified-platform' "$UNIFIED_SITE"; then
+  echo "Unified blog Nginx configuration detected; preserving it."
+else
+  if [[ ! -f /etc/nginx/nginx.conf.dist ]]; then
+    cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.dist
+  fi
+  install -m 644 "$RELEASE_DIR/deploy/nginx/nginx.conf" /etc/nginx/nginx.conf
+  rm -f /etc/nginx/conf.d/ai-quant.conf
+  render "$RELEASE_DIR/deploy/nginx/http.conf.template" /etc/nginx/conf.d/ai-quant.conf
 fi
-install -m 644 "$RELEASE_DIR/deploy/nginx/nginx.conf" /etc/nginx/nginx.conf
-rm -f /etc/nginx/conf.d/ai-quant.conf
-render "$RELEASE_DIR/deploy/nginx/http.conf.template" /etc/nginx/conf.d/ai-quant.conf
 nginx -t
 systemctl enable --now nginx >/dev/null
 systemctl restart nginx
@@ -107,7 +112,9 @@ if [[ ! -s "$certificate" ]]; then
 fi
 
 echo "[7/8] Enabling HTTPS and renewal"
-render "$RELEASE_DIR/deploy/nginx/https.conf.template" /etc/nginx/conf.d/ai-quant.conf
+if [[ ! -f "$UNIFIED_SITE" ]] || ! grep -q 'ai-blog-unified-platform' "$UNIFIED_SITE"; then
+  render "$RELEASE_DIR/deploy/nginx/https.conf.template" /etc/nginx/conf.d/ai-quant.conf
+fi
 nginx -t
 systemctl restart nginx
 systemctl enable --now ai-quant-cert-renew.timer >/dev/null
