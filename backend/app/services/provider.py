@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Protocol
 
 import pandas as pd
 
@@ -388,3 +388,110 @@ class AkshareProvider:
                 }
             )
         return rows
+
+
+class ResearchDataProvider(Protocol):
+    def stock_snapshot(self) -> list[dict[str, Any]]: ...
+
+    def trading_calendar(self) -> list[dict[str, Any]]: ...
+
+    def index_prices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]: ...
+
+    def point_in_time_financials(
+        self, report_date: date, symbols: list[str]
+    ) -> list[dict[str, Any]]: ...
+
+    def daily_prices(
+        self, symbol: str, start_date: date, end_date: date, adjustment: str = "qfq"
+    ) -> list[dict[str, Any]]: ...
+
+    def financial_metrics(self, symbol: str) -> list[dict[str, Any]]: ...
+
+    def news(self, symbol: str) -> list[dict[str, Any]]: ...
+
+    def notices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]: ...
+
+    def cninfo_notices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]: ...
+
+
+class HybridDataProvider:
+    """Prefer Tushare structured data while keeping public news and fallbacks."""
+
+    def __init__(
+        self,
+        primary: ResearchDataProvider,
+        fallback: AkshareProvider | None = None,
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback or AkshareProvider()
+
+    def _structured(self, method: str, *args: Any, **kwargs: Any) -> list[dict[str, Any]]:
+        try:
+            rows = getattr(self.primary, method)(*args, **kwargs)
+            if rows:
+                return rows
+        except Exception:
+            pass
+        return getattr(self.fallback, method)(*args, **kwargs)
+
+    def stock_snapshot(self) -> list[dict[str, Any]]:
+        return self._structured("stock_snapshot")
+
+    def trading_calendar(self) -> list[dict[str, Any]]:
+        return self._structured("trading_calendar")
+
+    def index_prices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]:
+        return self._structured("index_prices", symbol, start_date, end_date)
+
+    def point_in_time_financials(
+        self, report_date: date, symbols: list[str]
+    ) -> list[dict[str, Any]]:
+        return self._structured("point_in_time_financials", report_date, symbols)
+
+    def daily_prices(
+        self, symbol: str, start_date: date, end_date: date, adjustment: str = "qfq"
+    ) -> list[dict[str, Any]]:
+        return self._structured(
+            "daily_prices", symbol, start_date, end_date, adjustment
+        )
+
+    def financial_metrics(self, symbol: str) -> list[dict[str, Any]]:
+        return self._structured("financial_metrics", symbol)
+
+    def news(self, symbol: str) -> list[dict[str, Any]]:
+        return self.fallback.news(symbol)
+
+    def notices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]:
+        return self.fallback.notices(symbol, start_date, end_date)
+
+    def cninfo_notices(
+        self, symbol: str, start_date: date, end_date: date
+    ) -> list[dict[str, Any]]:
+        return self.fallback.cninfo_notices(symbol, start_date, end_date)
+
+
+def build_data_provider() -> ResearchDataProvider:
+    from app.core.config import get_settings
+    from app.services.tushare_provider import TushareProvider
+
+    settings = get_settings()
+    fallback = AkshareProvider()
+    if not settings.tushare_enabled or not settings.tushare_token:
+        return fallback
+    primary = TushareProvider(
+        token=settings.tushare_token,
+        base_url=settings.tushare_base_url,
+        timeout_seconds=settings.tushare_timeout_seconds,
+        min_interval_seconds=settings.tushare_min_interval_seconds,
+    )
+    return HybridDataProvider(primary, fallback)

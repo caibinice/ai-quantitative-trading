@@ -49,6 +49,7 @@ def build_app_env(
     credentials = read_credentials()
     mysql = credentials["mysql.remote"]
     llm = credentials["deepseek.api"]
+    tushare = credentials["tushare"] if credentials.has_section("tushare") else {}
     database_url = (
         f"mysql+pymysql://{quote_plus(mysql['user'])}:{quote_plus(mysql['password'])}"
         f"@{mysql['host']}:{mysql.get('port', '3306')}/{mysql['database']}"
@@ -60,6 +61,11 @@ def build_app_env(
         "DATABASE_URL": database_url,
         "DATABASE_ECHO": "false",
         "CORS_ORIGINS": f"https://{public_ip}",
+        "TUSHARE_ENABLED": "true" if tushare.get("token") else "false",
+        "TUSHARE_TOKEN": tushare.get("token", ""),
+        "TUSHARE_BASE_URL": tushare.get("base-url", "https://api.tushare.pro"),
+        "TUSHARE_TIMEOUT_SECONDS": tushare.get("timeout-seconds", "15"),
+        "TUSHARE_MIN_INTERVAL_SECONDS": tushare.get("min-interval-seconds", "0.35"),
         "LLM_ENABLED": "true" if llm.get("api-key") else "false",
         "LLM_BASE_URL": llm.get("base-url", "https://api.deepseek.com"),
         "LLM_API_KEY": llm.get("api-key", ""),

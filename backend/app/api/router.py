@@ -274,6 +274,7 @@ def sentiment_news(
 
 @router.get("/sentiment/sources")
 def sentiment_sources() -> list[dict[str, Any]]:
+    tushare_configured = bool(get_settings().tushare_token)
     return [
         {
             "id": "eastmoney-news",
@@ -307,9 +308,16 @@ def sentiment_sources() -> list[dict[str, Any]]:
             "name": "Tushare Pro 新闻通讯",
             "kind": "新闻",
             "status": "optional",
-            "registration": "需要注册 Token，并单独开通新闻舆情权限",
-            "access": "major_news",
-            "note": "覆盖多家财经媒体和历史正文；当前不作为免费默认依赖。",
+            "registration": (
+                "Token 已配置；仍需单独开通新闻舆情权限"
+                if tushare_configured
+                else "需要注册 Token，并单独开通新闻舆情权限"
+            ),
+            "access": "news（独立权限）",
+            "note": (
+                "2000 积分已用于行情和财务数据，但不包含新闻 API；"
+                "当前仍由东方财富与巨潮资讯提供舆情材料。"
+            ),
         },
         {
             "id": "gdelt",

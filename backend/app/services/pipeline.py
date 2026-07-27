@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import DEFAULT_STOCK_NAMES
 from app.models import JobRun, utcnow
 from app.services.news_dedup import deduplicate_persisted_news
-from app.services.provider import AkshareProvider
+from app.services.provider import ResearchDataProvider, build_data_provider
 from app.services.repository import ensure_stock, upsert_financials, upsert_news, upsert_prices
 
 
@@ -20,10 +20,10 @@ def sync_market_data(
     include_financials: bool = True,
     include_news: bool = True,
     include_notices: bool = True,
-    provider: AkshareProvider | None = None,
+    provider: ResearchDataProvider | None = None,
     include_prices: bool = True,
 ) -> dict[str, Any]:
-    provider = provider or AkshareProvider()
+    provider = provider or build_data_provider()
     job = JobRun(job_type="market_sync", status="running", details={"symbols": symbols})
     db.add(job)
     db.commit()

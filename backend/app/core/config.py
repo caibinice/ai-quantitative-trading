@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     database_echo: bool = False
     credentials_file: str = str(DEFAULT_CREDENTIALS_FILE)
 
+    tushare_enabled: bool = True
+    tushare_token: str = ""
+    tushare_base_url: str = "https://api.tushare.pro"
+    tushare_timeout_seconds: int = 15
+    tushare_min_interval_seconds: float = 0.35
+
     llm_enabled: bool = True
     llm_base_url: str = ""
     llm_api_key: str = ""
@@ -131,6 +137,10 @@ class Settings(BaseSettings):
             self.llm_model = llm.get("model", "deepseek-v4-pro")
         if self.llm_reasoning_effort not in {"high", "max"}:
             self.llm_reasoning_effort = "high"
+
+        tushare = _read_section(path, "tushare")
+        if not self.tushare_token:
+            self.tushare_token = tushare.get("token", "")
 
         if not self.database_url:
             self.database_url = f"sqlite:///{ROOT_DIR / 'ai_quant.db'}"

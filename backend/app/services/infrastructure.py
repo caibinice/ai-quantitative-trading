@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models import IndexPrice, PointInTimeFinancial, TradingCalendar
-from app.services.provider import AkshareProvider
+from app.services.provider import ResearchDataProvider, build_data_provider
 from app.services.repository import upsert_calendar, upsert_index_prices, upsert_pit_financials
 
 ProgressCallback = Callable[[float, str], None]
@@ -24,9 +24,9 @@ def quarter_ends(start_date: date, end_date: date) -> list[date]:
 
 
 def sync_trading_calendar(
-    db: Session, provider: AkshareProvider | None = None
+    db: Session, provider: ResearchDataProvider | None = None
 ) -> dict[str, Any]:
-    provider = provider or AkshareProvider()
+    provider = provider or build_data_provider()
     rows = provider.trading_calendar()
     actual_dates = {row["trade_date"] for row in rows}
     for demo_row in db.query(TradingCalendar).filter(TradingCalendar.source == "demo").all():
@@ -46,9 +46,9 @@ def sync_index_data(
     symbol: str,
     start_date: date,
     end_date: date,
-    provider: AkshareProvider | None = None,
+    provider: ResearchDataProvider | None = None,
 ) -> dict[str, Any]:
-    provider = provider or AkshareProvider()
+    provider = provider or build_data_provider()
     rows = provider.index_prices(symbol, start_date, end_date)
     actual_dates = {row["trade_date"] for row in rows}
     demo_rows = (
@@ -88,10 +88,10 @@ def sync_pit_financials(
     db: Session,
     symbols: list[str],
     report_dates: list[date],
-    provider: AkshareProvider | None = None,
+    provider: ResearchDataProvider | None = None,
     progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    provider = provider or AkshareProvider()
+    provider = provider or build_data_provider()
     total = 0
     errors: list[dict[str, str]] = []
     for index, report_date in enumerate(report_dates, 1):
@@ -131,15 +131,17 @@ def sync_research_infrastructure(
     end_date: date,
     report_dates: list[date] | None = None,
     progress: ProgressCallback | None = None,
+    provider: ResearchDataProvider | None = None,
 ) -> dict[str, Any]:
+    provider = provider or build_data_provider()
     results: dict[str, Any] = {}
     if progress:
         progress(0.05, "同步交易日历")
-    results["calendar"] = sync_trading_calendar(db)
+    results["calendar"] = sync_trading_calendar(db, provider)
     if progress:
         progress(0.18, "同步指数基准")
     results["benchmark"] = sync_index_data(
-        db, benchmark_symbol, start_date, end_date
+        db, benchmark_symbol, start_date, end_date, provider
     )
     dates = report_dates or quarter_ends(start_date, end_date)
 
@@ -148,7 +150,7 @@ def sync_research_infrastructure(
             progress(0.2 + value * 0.78, message)
 
     results["financials"] = sync_pit_financials(
-        db, symbols, dates, progress=financial_progress
+        db, symbols, dates, provider=provider, progress=financial_progress
     )
     if progress:
         progress(1.0, "研究基础数据同步完成")

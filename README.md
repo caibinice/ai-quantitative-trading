@@ -1,6 +1,6 @@
 # AI 量化研究舱
 
-一个面向量化初学者的 A 股全栈研究项目：用 AKShare 采集行情、财务、新闻与公告，用 OpenAI 兼容大模型把事件转换为结构化情绪分数，再做可解释选股排名和严格延迟信号的历史回测。
+一个面向量化初学者的 A 股全栈研究项目：用 Tushare Pro 优先采集结构化行情与财务数据，用 AKShare、东方财富和巨潮资讯补充新闻公告及故障降级，再用 OpenAI 兼容大模型把事件转换为结构化情绪分数，完成可解释选股排名和严格延迟信号的历史回测。
 
 > 仅用于学习、研究和模拟回测。系统不包含券商接口，不会执行真实交易，也不构成投资建议。
 
@@ -28,7 +28,8 @@
 
 ```mermaid
 flowchart LR
-    A["AKShare<br/>行情 / 财务 / 新闻 / 公告"] --> B["FastAPI 数据流水线"]
+    A["Tushare Pro<br/>行情 / 复权 / 财务 / 日历 / 指数"] --> B["FastAPI 混合数据流水线"]
+    J["AKShare + 公开源<br/>新闻 / 公告 / 自动降级"] --> B
     C["OpenAI 兼容 LLM<br/>DeepSeek 等"] --> D["结构化情绪分析"]
     B --> H["MySQL 持久化任务队列"]
     H --> I["独立 Worker"]
@@ -99,7 +100,7 @@ Demo 也可以在项目根目录直接运行：
 
 ## 远程一键部署
 
-当前生产方案面向 2 核 2GB Linux 服务器，使用 Nginx、单进程 FastAPI、轻量常驻 Worker 和 systemd。Worker 空闲时只加载队列层；处理 pandas/AKShare 重任务后空闲 30 秒会退出，再由 systemd 拉起一个干净的轻量进程，避免长期占用内存。服务器无需安装 Node.js，也不运行 Docker。
+当前生产方案面向 2 核 2GB Linux 服务器，使用 Nginx、单进程 FastAPI、轻量常驻 Worker 和 systemd。Worker 空闲时只加载队列层；处理 pandas/数据采集重任务后空闲 30 秒会退出，再由 systemd 拉起一个干净的轻量进程，避免长期占用内存。服务器无需安装 Node.js，也不运行 Docker。
 
 先在不会提交到 Git 的项目 `credentials.txt` 中配置；如果项目文件不
 存在，会读取兄弟目录 `ai-blog/credentials.txt` 中的通用段和
@@ -207,20 +208,68 @@ base-url=https://api.deepseek.com
 api-key=your-key
 api-key-backup=your-backup-key
 model=deepseek-v4-pro
+
+[tushare]
+token=your-tushare-token
 ```
+
+若由兄弟项目 `ai-blog` 统一维护凭证，运行
+`D:\codes\ai-blog\scripts\sync-shared-credentials.ps1` 后会把本段保存为
+`[quant.tushare]`。量化项目本地开发和发布脚本都能识别这个带作用域的段；
+Token 不会进入 release、前端构建或 Git。
 
 所有项目表统一使用 `aq_` 前缀，因此可以安全复用一个已有数据库。真实密钥只能放在 `.env`、系统环境变量或 `credentials.txt`，这些文件已加入 `.gitignore`。
 
 ## 数据源
 
-默认提供方是 [AKShare](https://github.com/akfamily/akshare)，当前接入：
+### Tushare Pro（结构化主数据源）
+
+本项目会在配置 Token 后自动启用 Tushare，不需要安装额外 SDK，后端通过
+官方 HTTP API 调用。对当前 2000 积分账号已做只读实测：
+
+| 数据 | Tushare API | 当前用途 |
+| --- | --- | --- |
+| 股票基础信息 | `stock_basic` | 股票代码、名称、行业和市场 |
+| A 股日线 | `daily` | 未复权 OHLCV 原始行情 |
+| 复权因子 | `adj_factor` | 与日线合并生成前复权价格 |
+| 每日指标 | `daily_basic` | 换手率等日频指标 |
+| 交易日历 | `trade_cal` | 开市/休市状态，按十年分段同步 |
+| 指数日线 | `index_daily` | 沪深 300 等回测基准 |
+| 财务指标 | `fina_indicator` | 近六年 ROE、毛利率、收入/利润同比等 |
+| 利润表 | `income` | 近六年收入、营业利润、利润总额、归母净利润 |
+| 资产负债表 | `balancesheet` | 近六年总资产、总负债、归母权益 |
+| 现金流量表 | `cashflow` | 近六年经营/投资/筹资现金流及期末现金 |
+
+前复权计算为 `原始价格 × 当日复权因子 ÷ 区间末复权因子`；成交额从
+Tushare 的“千元”统一换算成数据库使用的“元”。每条记录保留
+`source=tushare-pro`，页面会显示真实来源。财务数据同时保留报告期和公告日，
+AI 质量评分只会读取评分日当时已经公告的数据。
+
+实测账号还可以访问 `stk_limit`、`moneyflow`、`dividend` 和
+`index_weight`。这些属于后续可增加的涨跌停、资金流、分红和指数成分模块，
+当前没有为了“数据多”而直接混入选股分数。`ths_daily` 需要更高积分；`news`
+和 `anns_d` 返回独立权限限制，不包含在 2000 积分里。
+
+调用层按 2000 积分对应的 200 次/分钟额度设置了 0.35 秒最小间隔；日线、
+财务、日历或指数若请求失败或返回空数据，会按组件自动降级到 AKShare，
+不会把 Token、请求体或密钥写入错误信息。
+
+官方说明：
+[数据接口目录](https://tushare.pro/document/2)、
+[积分权限](https://tushare.pro/document/2?doc_id=290)、
+[日线行情](https://tushare.pro/document/2?doc_id=27)、
+[财务指标](https://tushare.pro/document/2?doc_id=79)、
+[新闻通讯](https://tushare.pro/document/2?doc_id=143)、
+[上市公司公告](https://tushare.pro/document/2?doc_id=176)。
+
+### AKShare 与公开源（舆情和自动降级）
 
 | 数据 | AKShare 接口 | 说明 |
 | --- | --- | --- |
 | 全市场快照 | `stock_zh_a_spot_em` | 股票代码、名称、估值和市值等快照 |
-| 日线行情 | `stock_zh_a_hist` | 东方财富前复权日线 |
+| 日线行情降级 | `stock_zh_a_hist` | Tushare 不可用时使用东方财富前复权日线 |
 | 日线降级 | `stock_zh_a_hist_tx` | 东方财富网络失败时自动切换腾讯 |
-| 交易日历 | `tool_trade_date_hist_sina` | A 股历史与当年交易日 |
+| 交易日历降级 | `tool_trade_date_hist_sina` | A 股历史与当年交易日 |
 | 指数基准 | `index_zh_a_hist` | 失败时回退 `stock_zh_index_daily_tx` |
 | 点时财务 | `stock_yjbb_em` | 使用“最新公告日期”作为真正可得日 |
 | 财务指标 | `stock_financial_abstract_new_ths` | 失败时回退新浪宽表接口 |
@@ -233,7 +282,7 @@ AKShare 是开源接口库，但它聚合的源站接口可能变更、限流或
 舆情雷达页面同时列出候选数据源和注册要求：
 
 - 东方财富个股新闻、东方财富公告、巨潮资讯公告：当前已接入，无需额外账号。
-- [Tushare Pro 新闻通讯](https://tushare.pro/document/2?doc_id=195)：需要注册 Token，并单独开通新闻舆情权限，不作为免费默认依赖。
+- [Tushare Pro 新闻通讯](https://tushare.pro/document/2?doc_id=143)：Token 已配置，但新闻仍需单独开通权限；2000 积分不包含该接口，因此不作为当前舆情依赖。
 - [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/)：旧版全文检索接口无需 Key；新版 GDELT Cloud 开发 API 需要账号/API Key。国际覆盖广，但 A 股中文实体映射和噪声仍需评估，因此暂列候选而未默认采集。
 
 ## 从数据到策略

@@ -70,8 +70,32 @@ def upsert_prices(db: Session, rows: Iterable[dict[str, Any]]) -> int:
 
 
 def upsert_financials(db: Session, rows: Iterable[dict[str, Any]]) -> int:
+    items = list(rows)
+    real_rows = [row for row in items if row.get("source") != "demo"]
+    for symbol in {row["symbol"] for row in real_rows}:
+        db.execute(
+            delete(FinancialMetric).where(
+                FinancialMetric.symbol == symbol,
+                FinancialMetric.source == "demo",
+            )
+        )
+    primary_rows = [row for row in items if row.get("source") == "tushare-pro"]
+    for symbol in {row["symbol"] for row in primary_rows}:
+        first_primary_date = min(
+            row["report_date"] for row in primary_rows if row["symbol"] == symbol
+        )
+        # Once canonical Tushare statements are available, remove overlapping
+        # fallback rows. This prevents stale demo/AKShare dates from appearing
+        # newer than the official report periods after a provider migration.
+        db.execute(
+            delete(FinancialMetric).where(
+                FinancialMetric.symbol == symbol,
+                FinancialMetric.source != "tushare-pro",
+                FinancialMetric.report_date >= first_primary_date,
+            )
+        )
     count = 0
-    for row in rows:
+    for row in items:
         existing = db.scalar(
             select(FinancialMetric).where(
                 FinancialMetric.symbol == row["symbol"],
@@ -80,6 +104,11 @@ def upsert_financials(db: Session, rows: Iterable[dict[str, Any]]) -> int:
             )
         )
         if existing:
+            if (
+                existing.source == "tushare-pro"
+                and row.get("source") != "tushare-pro"
+            ):
+                continue
             for key, value in row.items():
                 setattr(existing, key, value)
         else:
