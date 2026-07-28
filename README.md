@@ -168,7 +168,11 @@ pwsh -File scripts/start.ps1    # 一键恢复
 `aq_blog_comments`，不会出现在公开响应。管理接口使用独立 Bearer
 令牌，发布脚本会生成至少 32 字节随机值，并同步保存到不提交 Git 的
 `.deploy/blog-admin.json` 与相邻博客仓库的同名文件。浏览器管理页只把
-令牌放进当前标签页的 `sessionStorage`。
+令牌放进当前标签页的 `sessionStorage`。AI 动态聚合 OpenAI、Google
+DeepMind、Hugging Face、Google AI、MIT AI、NVIDIA Developer 与 AWS
+Machine Learning 的官方订阅源；服务端每 6 小时更新一次持久化快照，
+仅返回最近 7 天内容。`/api/blog/news` 支持 `page`、`pageSize` 和
+`source` 参数，供博客进行分页与来源筛选。
 
 ## 配置数据库与大模型
 

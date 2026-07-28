@@ -16,7 +16,12 @@ FEEDS = (
     ("OpenAI", "https://openai.com/news/rss.xml"),
     ("Google DeepMind", "https://deepmind.google/blog/rss.xml"),
     ("Hugging Face", "https://huggingface.co/blog/feed.xml"),
+    ("Google AI", "https://blog.google/technology/ai/rss/"),
+    ("MIT AI", "https://news.mit.edu/rss/topic/artificial-intelligence2"),
+    ("NVIDIA Developer", "https://developer.nvidia.com/blog/tag/generative-ai/feed/"),
+    ("AWS Machine Learning", "https://aws.amazon.com/blogs/machine-learning/feed/"),
 )
+NEWS_WINDOW_DAYS = 7
 TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -92,7 +97,9 @@ class BlogNewsCache:
     async def get(
         self,
         *,
-        limit: int,
+        page: int,
+        page_size: int,
+        source: str,
         ttl_seconds: int,
         stale_seconds: int,
         seed_file: str = "",
@@ -101,26 +108,55 @@ class BlogNewsCache:
         if not self._updated_at and seed_file:
             self._load_seed(Path(seed_file), stale_seconds)
         if self._updated_at and now - self._updated_at < timedelta(seconds=ttl_seconds):
-            return self._response(limit, "fresh")
+            return self._response(page, page_size, source, "fresh", ttl_seconds, now)
 
         async with self._lock:
             now = datetime.now(UTC)
             if self._updated_at and now - self._updated_at < timedelta(seconds=ttl_seconds):
-                return self._response(limit, "fresh")
+                return self._response(page, page_size, source, "fresh", ttl_seconds, now)
             fetched = await self._fetch_all()
-            if fetched:
-                self._items = self._balanced(fetched)
+            if any(fetched.values()):
+                previous = {
+                    feed_source: [
+                        item for item in self._items if item.source == feed_source
+                    ]
+                    for feed_source, _ in FEEDS
+                }
+                merged = [
+                    item
+                    for feed_source, _ in FEEDS
+                    for item in (fetched.get(feed_source) or previous[feed_source])
+                ]
+                known_sources = {feed_source for feed_source, _ in FEEDS}
+                merged.extend(
+                    item
+                    for feed_source, items in fetched.items()
+                    if feed_source not in known_sources
+                    for item in items
+                )
+                merged.extend(
+                    item for item in self._items if item.source not in known_sources
+                )
+                self._items = self._recent(self._balanced(merged), now)
                 self._updated_at = now
-                return self._response(limit, "refreshed")
+                if seed_file:
+                    self._save_snapshot(Path(seed_file))
+                return self._response(
+                    page, page_size, source, "refreshed", ttl_seconds, now
+                )
             if (
                 self._updated_at
                 and now - self._updated_at <= timedelta(seconds=stale_seconds)
                 and self._items
             ):
-                return self._response(limit, "stale")
-            return {"items": [], "cacheStatus": "unavailable", "updatedAt": None}
+                return self._response(
+                    page, page_size, source, "stale", ttl_seconds, now
+                )
+            return self._response(
+                page, page_size, source, "unavailable", ttl_seconds, now
+            )
 
-    async def _fetch_all(self) -> list[FeedItem]:
+    async def _fetch_all(self) -> dict[str, list[FeedItem]]:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(5.0),
             follow_redirects=True,
@@ -129,7 +165,10 @@ class BlogNewsCache:
             responses = await asyncio.gather(
                 *(self._fetch_one(client, source, url) for source, url in FEEDS)
             )
-        return [item for group in responses for item in group]
+        return {
+            source: items
+            for (source, _), items in zip(FEEDS, responses, strict=True)
+        }
 
     @staticmethod
     async def _fetch_one(
@@ -145,16 +184,66 @@ class BlogNewsCache:
         except (httpx.HTTPError, ElementTree.ParseError, ValueError):
             return []
 
-    def _response(self, limit: int, status: str) -> dict[str, object]:
+    def _response(
+        self,
+        page: int,
+        page_size: int,
+        source: str,
+        status: str,
+        ttl_seconds: int,
+        now: datetime,
+    ) -> dict[str, object]:
+        recent = self._recent(self._items, now)
+        counts = {
+            feed_source: sum(item.source == feed_source for item in recent)
+            for feed_source, _ in FEEDS
+        }
+        source_filter = source.strip()
+        visible = (
+            [item for item in recent if item.source == source_filter]
+            if source_filter
+            else recent
+        )
+        total = len(visible)
+        total_pages = (total + page_size - 1) // page_size
+        start = (page - 1) * page_size
         return {
-            "items": [item.as_dict() for item in self._items[:limit]],
+            "items": [item.as_dict() for item in visible[start : start + page_size]],
+            "page": page,
+            "pageSize": page_size,
+            "total": total,
+            "totalPages": total_pages,
+            "source": source_filter or None,
+            "sources": [
+                {"name": feed_source, "count": counts[feed_source]}
+                for feed_source, _ in FEEDS
+                if counts[feed_source]
+            ],
+            "windowDays": NEWS_WINDOW_DAYS,
             "cacheStatus": status,
             "updatedAt": (
                 self._updated_at.isoformat().replace("+00:00", "Z")
                 if self._updated_at
                 else None
             ),
+            "nextUpdateAt": (
+                (self._updated_at + timedelta(seconds=ttl_seconds))
+                .isoformat()
+                .replace("+00:00", "Z")
+                if self._updated_at
+                else None
+            ),
         }
+
+    @staticmethod
+    def _recent(items: list[FeedItem], now: datetime) -> list[FeedItem]:
+        cutoff = now - timedelta(days=NEWS_WINDOW_DAYS)
+        latest = now + timedelta(hours=1)
+        return [
+            item
+            for item in items
+            if cutoff <= item.published_at.astimezone(UTC) <= latest
+        ]
 
     @staticmethod
     def _balanced(items: list[FeedItem]) -> list[FeedItem]:
@@ -202,10 +291,33 @@ class BlogNewsCache:
                 )
                 for item in payload["items"]
             ]
-            self._items = self._balanced(items)
+            self._items = self._recent(self._balanced(items), datetime.now(UTC))
+            if not self._items:
+                return
             self._updated_at = updated
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
             return
+
+    def _save_snapshot(self, path: Path) -> None:
+        if not self._updated_at:
+            return
+        payload = {
+            "updatedAt": self._updated_at.isoformat().replace("+00:00", "Z"),
+            "items": [item.as_dict() for item in self._items],
+        }
+        temporary = path.with_suffix(f"{path.suffix}.tmp")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary.write_text(
+                json.dumps(payload, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            temporary.replace(path)
+        except OSError:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 blog_news_cache = BlogNewsCache()

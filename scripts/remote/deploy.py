@@ -80,9 +80,9 @@ def build_app_env(
         "INFRASTRUCTURE_CRON": "10 8 * * 6",
         "DATA_QUALITY_CRON": "10 20 * * 1-5",
         "BLOG_ADMIN_TOKEN": blog_admin_token,
-        "BLOG_NEWS_CACHE_SECONDS": "1800",
-        "BLOG_NEWS_STALE_SECONDS": "86400",
-        "BLOG_NEWS_SEED_FILE": f"{APP_ROOT}/shared/blog-news-seed.json",
+        "BLOG_NEWS_CACHE_SECONDS": "21600",
+        "BLOG_NEWS_STALE_SECONDS": "604800",
+        "BLOG_NEWS_SEED_FILE": f"{APP_ROOT}/shared/blog-news/snapshot.json",
         "ACTION_PASSWORD": action_auth["password"],
         "ACTION_TOKEN_SECRET": action_auth["tokenSecret"],
         "ACTION_TOKEN_TTL_MINUTES": "30",
@@ -146,12 +146,18 @@ def build_blog_news_seed() -> bytes:
         follow_redirects=True,
     ) as client:
         for source, url in FEEDS:
-            response = client.get(url)
-            response.raise_for_status()
-            parsed = parse_feed(response.text, source)
-            if not parsed:
-                raise RuntimeError(f"Official feed produced no items: {source}")
-            items.extend(item.as_dict() for item in parsed[:40])
+            try:
+                response = client.get(url)
+                response.raise_for_status()
+                parsed = parse_feed(response.text, source)
+                if parsed:
+                    items.extend(item.as_dict() for item in parsed[:40])
+                else:
+                    print(f"Warning: official feed produced no items: {source}")
+            except (httpx.HTTPError, SyntaxError, ValueError) as exc:
+                print(f"Warning: unable to seed {source}: {type(exc).__name__}")
+    if not items:
+        raise RuntimeError("All official AI news feeds failed while building the seed.")
     payload = {
         "updatedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "items": items,
@@ -187,11 +193,11 @@ def main() -> None:
         remote.upload_bytes(build_blog_news_seed(), news_remote, 0o644)
         wrapper = f"""#!/usr/bin/env bash
 set -euo pipefail
-mkdir -p {APP_ROOT}/releases {APP_ROOT}/shared
+mkdir -p {APP_ROOT}/releases {APP_ROOT}/shared/blog-news
 mkdir -p {release_remote}
 tar -xzf {archive_remote} -C {release_remote}
 install -m 600 {env_remote} {APP_ROOT}/shared/app.env
-install -m 644 {news_remote} {APP_ROOT}/shared/blog-news-seed.json
+install -m 644 {news_remote} {APP_ROOT}/shared/blog-news/snapshot.json
 chmod +x {release_remote}/deploy/remote/*.sh
 bash {release_remote}/deploy/remote/install.sh \
   {APP_ROOT} {release_remote} {ssh['user']} {public_ip}

@@ -19,7 +19,7 @@ if ! swapon --show --noheadings | grep -q .; then
 fi
 
 echo "[2/8] Preparing Python environments"
-mkdir -p "$SHARED"/{acme,certbot-work,certbot-logs,letsencrypt}
+mkdir -p "$SHARED"/{acme,certbot-work,certbot-logs,letsencrypt} "$SHARED/blog-news"
 if [[ ! -x "$SHARED/venv/bin/python" ]]; then
   python3.11 -m venv "$SHARED/venv"
 fi
@@ -41,7 +41,8 @@ mkdir -p "$APP_ROOT/www"
 ln -sfn "$RELEASE_DIR/frontend/dist" "$APP_ROOT/www/quant.next"
 mv -Tf "$APP_ROOT/www/quant.next" "$APP_ROOT/www/quant"
 chown -R "$APP_USER:$APP_USER" "$RELEASE_DIR"
-chown "$APP_USER:$APP_USER" "$SHARED/app.env"
+chown "$APP_USER:$APP_USER" \
+  "$SHARED/app.env" "$SHARED/blog-news" "$SHARED/blog-news/snapshot.json"
 chmod 600 "$SHARED/app.env"
 chmod 755 "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/www" "$RELEASE_DIR" "$SHARED" "$SHARED/acme"
 

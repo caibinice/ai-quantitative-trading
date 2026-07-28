@@ -35,8 +35,9 @@ def _client(monkeypatch) -> TestClient:
         "get_settings",
         lambda: SimpleNamespace(
             blog_admin_token=ADMIN_TOKEN,
-            blog_news_cache_seconds=1800,
-            blog_news_stale_seconds=86400,
+            blog_news_cache_seconds=21600,
+            blog_news_stale_seconds=604800,
+            blog_news_seed_file="",
         ),
     )
     app = FastAPI()
@@ -120,23 +121,35 @@ def test_news_cache_serves_fresh_then_stale(monkeypatch) -> None:
     )
 
     async def fetched():
-        return [item]
+        return {"Source": [item]}
 
     monkeypatch.setattr(cache, "_fetch_all", fetched)
     first = asyncio.run(
-        cache.get(limit=12, ttl_seconds=1800, stale_seconds=86400)
+        cache.get(
+            page=1,
+            page_size=12,
+            source="",
+            ttl_seconds=21600,
+            stale_seconds=604800,
+        )
     )
     assert first["cacheStatus"] == "refreshed"
     assert first["items"][0]["title"] == "A release"
 
-    cache._updated_at = datetime.now(UTC) - timedelta(hours=1)
+    cache._updated_at = datetime.now(UTC) - timedelta(hours=7)
 
     async def failed():
-        return []
+        return {}
 
     monkeypatch.setattr(cache, "_fetch_all", failed)
     stale = asyncio.run(
-        cache.get(limit=12, ttl_seconds=1800, stale_seconds=86400)
+        cache.get(
+            page=1,
+            page_size=12,
+            source="",
+            ttl_seconds=21600,
+            stale_seconds=604800,
+        )
     )
     assert stale["cacheStatus"] == "stale"
     assert stale["items"][0]["url"] == "https://example.com/release"
@@ -172,9 +185,11 @@ def test_news_seed_keeps_all_official_sources(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(cache, "_fetch_all", should_not_fetch)
     response = asyncio.run(
         cache.get(
-            limit=12,
-            ttl_seconds=1800,
-            stale_seconds=86400,
+            page=1,
+            page_size=12,
+            source="",
+            ttl_seconds=21600,
+            stale_seconds=604800,
             seed_file=str(seed),
         )
     )
@@ -183,3 +198,118 @@ def test_news_seed_keeps_all_official_sources(monkeypatch, tmp_path) -> None:
         "Google DeepMind",
         "Hugging Face",
     }
+
+
+def test_news_cache_filters_recent_items_and_paginates_by_source(
+    monkeypatch, tmp_path
+) -> None:
+    cache = BlogNewsCache()
+    now = datetime.now(UTC)
+    fresh_items = [
+        FeedItem(
+            title=f"OpenAI {index}",
+            source="OpenAI",
+            url=f"https://example.com/openai/{index}",
+            published_at=now - timedelta(hours=index),
+        )
+        for index in range(3)
+    ]
+    fresh_items.append(
+        FeedItem(
+            title="MIT recent",
+            source="MIT AI",
+            url="https://example.com/mit/recent",
+            published_at=now - timedelta(days=2),
+        )
+    )
+    fresh_items.append(
+        FeedItem(
+            title="MIT old",
+            source="MIT AI",
+            url="https://example.com/mit/old",
+            published_at=now - timedelta(days=8),
+        )
+    )
+
+    async def fetched():
+        return {"OpenAI": fresh_items[:3], "MIT AI": fresh_items[3:]}
+
+    snapshot = tmp_path / "snapshot.json"
+    monkeypatch.setattr(cache, "_fetch_all", fetched)
+    response = asyncio.run(
+        cache.get(
+            page=2,
+            page_size=1,
+            source="OpenAI",
+            ttl_seconds=21600,
+            stale_seconds=604800,
+            seed_file=str(snapshot),
+        )
+    )
+
+    assert response["total"] == 3
+    assert response["totalPages"] == 3
+    assert response["page"] == 2
+    assert response["items"][0]["title"] == "OpenAI 1"
+    assert {item["name"] for item in response["sources"]} == {"OpenAI", "MIT AI"}
+    assert all(item["title"] != "MIT old" for item in json.loads(snapshot.read_text())["items"])
+
+
+def test_news_refresh_preserves_a_source_when_its_feed_temporarily_fails(
+    monkeypatch,
+) -> None:
+    cache = BlogNewsCache()
+    now = datetime.now(UTC)
+    cache._items = [
+        FeedItem("Old OpenAI", "OpenAI", "https://example.com/openai/old", now),
+        FeedItem("Old MIT", "MIT AI", "https://example.com/mit/old", now),
+    ]
+    cache._updated_at = now - timedelta(hours=7)
+
+    async def partially_fetched():
+        return {
+            "OpenAI": [
+                FeedItem("New OpenAI", "OpenAI", "https://example.com/openai/new", now)
+            ],
+            "MIT AI": [],
+        }
+
+    monkeypatch.setattr(cache, "_fetch_all", partially_fetched)
+    response = asyncio.run(
+        cache.get(
+            page=1,
+            page_size=12,
+            source="",
+            ttl_seconds=21600,
+            stale_seconds=604800,
+        )
+    )
+
+    assert {item["title"] for item in response["items"]} == {
+        "New OpenAI",
+        "Old MIT",
+    }
+
+
+def test_news_endpoint_forwards_pagination_and_source(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_get(**kwargs):
+        captured.update(kwargs)
+        return {
+            "items": [],
+            "page": kwargs["page"],
+            "pageSize": kwargs["page_size"],
+            "total": 0,
+            "totalPages": 0,
+        }
+
+    monkeypatch.setattr(blog.blog_news_cache, "get", fake_get)
+    response = _client(monkeypatch).get(
+        "/api/blog/news?page=2&pageSize=6&source=MIT%20AI"
+    )
+
+    assert response.status_code == 200
+    assert captured["page"] == 2
+    assert captured["page_size"] == 6
+    assert captured["source"] == "MIT AI"

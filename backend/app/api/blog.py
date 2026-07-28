@@ -138,11 +138,15 @@ def delete_comment(comment_id: int, db: Session = Depends(get_db)) -> Response:
 
 @router.get("/news")
 async def list_news(
-    limit: int = Query(default=12, ge=1, le=30),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, alias="pageSize", ge=1, le=24),
+    source: str = Query(default="", max_length=80),
 ) -> dict[str, object]:
     settings = get_settings()
     return await blog_news_cache.get(
-        limit=limit,
+        page=page,
+        page_size=page_size,
+        source=source,
         ttl_seconds=settings.blog_news_cache_seconds,
         stale_seconds=settings.blog_news_stale_seconds,
         seed_file=settings.blog_news_seed_file,

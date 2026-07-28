@@ -100,8 +100,8 @@ class Settings(BaseSettings):
     data_quality_cron: str = "10 20 * * 1-5"
 
     blog_admin_token: str = ""
-    blog_news_cache_seconds: int = 1800
-    blog_news_stale_seconds: int = 86400
+    blog_news_cache_seconds: int = 21600
+    blog_news_stale_seconds: int = 604800
     blog_news_seed_file: str = ""
 
     action_password: str = ""
