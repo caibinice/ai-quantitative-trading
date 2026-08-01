@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import configparser
 import json
 import os
 import secrets
@@ -113,33 +112,30 @@ def load_or_create_blog_admin_token() -> str:
 def load_or_create_action_auth() -> dict[str, str]:
     blog_path = ROOT_DIR.parent / "ai-blog" / ".deploy" / "action-auth.json"
     quant_path = STATE_DIR / "action-auth.json"
-    source = blog_path if blog_path.exists() else quant_path
-    if source.exists():
-        value = json.loads(source.read_text(encoding="utf-8"))
+    if quant_path.exists():
+        value = json.loads(quant_path.read_text(encoding="utf-8"))
     else:
         credentials = read_credentials()
         password = os.environ.get("AI_PLATFORM_ACTION_PASSWORD", "") or credentials.get(
             "platform.action", "password", fallback=""
         )
-        if not password:
-            shared_path = ROOT_DIR.parent / "ai-blog" / "credentials.txt"
-            if shared_path.exists():
-                shared = configparser.ConfigParser(interpolation=None)
-                shared.read(shared_path, encoding="utf-8")
-                password = shared.get(
-                    "platform.action", "password", fallback=""
-                )
-        if not password:
+        if password:
+            value = {
+                "password": password,
+                "tokenSecret": secrets.token_urlsafe(48),
+            }
+        elif blog_path.exists():
+            value = json.loads(blog_path.read_text(encoding="utf-8"))
+        else:
             raise RuntimeError(
                 "Missing ignored action-auth.json and [platform.action] password."
             )
-        value = {
-            "password": password,
-            "tokenSecret": secrets.token_urlsafe(48),
-        }
     if not value.get("password") or not value.get("tokenSecret"):
         raise RuntimeError("action-auth.json is incomplete.")
-    for path in (blog_path, quant_path):
+    targets = [quant_path]
+    if blog_path.parents[1].exists():
+        targets.append(blog_path)
+    for path in targets:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
     return value

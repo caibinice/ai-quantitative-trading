@@ -51,9 +51,9 @@ flowchart LR
 
 要求：PowerShell 7、64 位 Python 3.11+、Node.js 20+，以及一个可用的 MySQL 数据库。
 
-完整生产版本当前固定使用 `agent/research-infrastructure` 分支。新机器应按
-兄弟仓库 `ai-blog/docs/new-machine-setup.md` 的目录布局克隆，并只把共享
-`credentials.txt` 放在 `ai-blog` 根目录；不要直接使用仓库默认分支代替。
+完整生产版本当前固定使用 `agent/research-infrastructure` 分支。单独开发
+本项目时只需克隆该分支，并把私有 `credentials.txt` 放在本仓库根目录；
+不要求同时下载 `ai-blog` 或其他展示项目。
 
 ```powershell
 # 1. 安装依赖，并生成演示数据
@@ -106,9 +106,10 @@ Demo 也可以在项目根目录直接运行：
 
 当前生产方案面向 2 核 2GB Linux 服务器，使用 Nginx、单进程 FastAPI、轻量常驻 Worker 和 systemd。Worker 空闲时只加载队列层；处理 pandas/数据采集重任务后空闲 30 秒会退出，再由 systemd 拉起一个干净的轻量进程，避免长期占用内存。服务器无需安装 Node.js，也不运行 Docker。
 
-先在不会提交到 Git 的项目 `credentials.txt` 中配置；如果项目文件不
-存在，会读取兄弟目录 `ai-blog/credentials.txt` 中的通用段和
-`quant.*` 覆盖段：
+先按 `credentials.example.txt` 在不会提交到 Git 的项目
+`credentials.txt` 中配置。它既可以使用无前缀项目段，也可以直接复制含
+`quant.*` 段的通用凭据文件。只有项目文件不存在且兄弟目录刚好存在博客
+凭据时，才会使用兼容回退：
 
 ```ini
 [remote.ssh]
@@ -120,7 +121,7 @@ root_password=可通过 su 使用的 root 密码
 
 ```
 
-首次发布从共享 `credentials.txt` 的 `[platform.action] password` 读取操作
+首次发布从本项目 `credentials.txt` 的 `[platform.action] password` 读取操作
 口令，脚本会生成并保存一个不提交 Git 的签名密钥；后续发布复用
 `.deploy/action-auth.json`。进程环境变量仍可作为临时覆盖：
 
@@ -147,6 +148,19 @@ Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用
 ```text
 .deploy/action-auth.json
 ```
+
+独立构建、部署和提交均从本仓库执行：
+
+```powershell
+pwsh -File scripts/deploy.ps1 -BuildOnly
+pwsh -File scripts/deploy.ps1
+pwsh -File scripts/github-push.ps1 `
+  -Message 'fix: describe the change' `
+  -Files @('path/to/changed-file')
+```
+
+GitHub 脚本只读取本仓库 `credentials.txt` 的 `[github]`，并只在当前进程
+使用 `127.0.0.1:20808` 代理和 token，不修改 remote URL 或全局 Git 配置。
 
 浏览器访问 `https://服务器公网IP/quant/` 可直接查看行情、研究结果和
 课程。采集、AI 分析、评分、回测、任务、Walk-forward、数据质量和自动化

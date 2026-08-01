@@ -38,7 +38,7 @@ def read_credentials() -> configparser.ConfigParser:
         )
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(path, encoding="utf-8")
-    return parser if path == local else _scoped_credentials(parser, "quant")
+    return _scoped_credentials(parser, "quant")
 
 
 class RemoteClient:
