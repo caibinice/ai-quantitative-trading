@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import json
 import os
 import secrets
@@ -116,10 +117,21 @@ def load_or_create_action_auth() -> dict[str, str]:
     if source.exists():
         value = json.loads(source.read_text(encoding="utf-8"))
     else:
-        password = os.environ.get("AI_PLATFORM_ACTION_PASSWORD", "")
+        credentials = read_credentials()
+        password = os.environ.get("AI_PLATFORM_ACTION_PASSWORD", "") or credentials.get(
+            "platform.action", "password", fallback=""
+        )
+        if not password:
+            shared_path = ROOT_DIR.parent / "ai-blog" / "credentials.txt"
+            if shared_path.exists():
+                shared = configparser.ConfigParser(interpolation=None)
+                shared.read(shared_path, encoding="utf-8")
+                password = shared.get(
+                    "platform.action", "password", fallback=""
+                )
         if not password:
             raise RuntimeError(
-                "Missing ignored action-auth.json and AI_PLATFORM_ACTION_PASSWORD."
+                "Missing ignored action-auth.json and [platform.action] password."
             )
         value = {
             "password": password,

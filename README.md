@@ -51,6 +51,10 @@ flowchart LR
 
 要求：PowerShell 7、64 位 Python 3.11+、Node.js 20+，以及一个可用的 MySQL 数据库。
 
+完整生产版本当前固定使用 `agent/research-infrastructure` 分支。新机器应按
+兄弟仓库 `ai-blog/docs/new-machine-setup.md` 的目录布局克隆，并只把共享
+`credentials.txt` 放在 `ai-blog` 根目录；不要直接使用仓库默认分支代替。
+
 ```powershell
 # 1. 安装依赖，并生成演示数据
 pwsh -File scripts/setup.ps1 -SeedDemo
@@ -116,8 +120,9 @@ root_password=可通过 su 使用的 root 密码
 
 ```
 
-首次发布先通过进程环境提供操作口令，脚本会生成并保存一个不提交 Git
-的签名密钥；后续发布复用 `.deploy/action-auth.json`：
+首次发布从共享 `credentials.txt` 的 `[platform.action] password` 读取操作
+口令，脚本会生成并保存一个不提交 Git 的签名密钥；后续发布复用
+`.deploy/action-auth.json`。进程环境变量仍可作为临时覆盖：
 
 ```powershell
 $env:AI_PLATFORM_ACTION_PASSWORD='<your-operation-password>'
