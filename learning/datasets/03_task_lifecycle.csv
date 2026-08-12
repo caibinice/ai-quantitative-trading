@@ -1,0 +1,11 @@
+task_id,event,status,progress,attempt
+101,created,queued,0.00,0
+101,claimed,running,0.01,1
+101,data_fetched,running,0.45,1
+101,model_analyzed,running,0.80,1
+101,scores_saved,success,1.00,1
+102,created,queued,0.00,0
+102,claimed,running,0.01,1
+102,provider_timeout,queued,0.00,1
+102,reclaimed,running,0.01,2
+102,data_fetched,success,1.00,2

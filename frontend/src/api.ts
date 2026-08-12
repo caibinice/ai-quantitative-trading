@@ -1,13 +1,30 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+import {
+  clearActionAuthorization,
+  getActionAuthorization,
+} from './actionAuth'
+
+const APP_BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+const API_BASE = import.meta.env.VITE_API_BASE ?? `${APP_BASE}/api`
+
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`
+}
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const method = (options?.method ?? 'GET').toUpperCase()
+  const requiresActionAuth = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+    && !path.startsWith('/learning/')
+    && !path.startsWith('/action-auth/')
+  const headers = new Headers(options?.headers)
+  headers.set('Content-Type', 'application/json')
+  if (requiresActionAuth) {
+    headers.set('Authorization', await getActionAuthorization())
+  }
+  const response = await fetch(apiUrl(path), {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   })
+  if (response.status === 401 && requiresActionAuth) clearActionAuthorization()
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }))
     const detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)

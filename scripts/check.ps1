@@ -14,6 +14,8 @@ try {
 
 Push-Location (Join-Path $Root 'frontend')
 try {
+    npm run lint
+    if ($LASTEXITCODE -ne 0) { throw '前端 Lint 失败。' }
     npm run build
     if ($LASTEXITCODE -ne 0) { throw '前端构建失败。' }
 } finally {

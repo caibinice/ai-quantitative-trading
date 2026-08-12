@@ -1,0 +1,25 @@
+[Unit]
+Description=AI Quant Research Cockpit Queue Worker
+After=network-online.target ai-quant-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_ROOT__/current/backend
+EnvironmentFile=__APP_ROOT__/shared/app.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APP_ROOT__/shared/venv/bin/python -m app.worker --poll-seconds 2 --idle-exit-seconds 30
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+MemoryHigh=650M
+MemoryMax=900M
+CPUQuota=180%
+Nice=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

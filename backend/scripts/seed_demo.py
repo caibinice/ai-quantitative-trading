@@ -11,25 +11,24 @@ from sqlalchemy import select
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.core.config import DEFAULT_STOCK_NAMES  # noqa: E402
 from app.core.database import SessionLocal, create_tables  # noqa: E402
 from app.models import (  # noqa: E402
     DailyPrice,
     FinancialMetric,
+    IndexPrice,
     NewsItem,
+    PointInTimeFinancial,
     SentimentAnalysis,
     Stock,
     StrategyConfig,
+    TradingCalendar,
 )
 from app.schemas import StrategyParameters  # noqa: E402
+from app.services.data_quality import run_data_quality_checks  # noqa: E402
 from app.services.scoring import calculate_scores  # noqa: E402
 
-STOCKS = {
-    "000001": "平安银行",
-    "600519": "贵州茅台",
-    "300750": "宁德时代",
-    "601318": "中国平安",
-    "000858": "五粮液",
-}
+STOCKS = DEFAULT_STOCK_NAMES
 
 
 def seed() -> None:
@@ -38,6 +37,49 @@ def seed() -> None:
     end = pd.Timestamp(date.today())
     dates = pd.bdate_range(end=end, periods=320)
     with SessionLocal() as db:
+        has_real_calendar = db.scalar(
+            select(TradingCalendar.trade_date)
+            .where(TradingCalendar.source != "demo")
+            .limit(1)
+        )
+        if not has_real_calendar:
+            for trade_date in dates:
+                day = trade_date.date()
+                if db.get(TradingCalendar, day) is None:
+                    db.add(TradingCalendar(trade_date=day, is_open=True, source="demo"))
+
+        has_real_benchmark = db.scalar(
+            select(IndexPrice.trade_date)
+            .where(IndexPrice.symbol == "000300", IndexPrice.source != "demo")
+            .limit(1)
+        )
+        if not has_real_benchmark:
+            benchmark_existing_dates = set(
+                db.scalars(
+                    select(IndexPrice.trade_date).where(IndexPrice.symbol == "000300")
+                ).all()
+            )
+            benchmark_returns = rng.normal(0.00018, 0.009, len(dates))
+            benchmark_closes = 3500 * np.exp(np.cumsum(benchmark_returns))
+            for trade_date, close in zip(dates, benchmark_closes, strict=True):
+                day = trade_date.date()
+                if day in benchmark_existing_dates:
+                    continue
+                open_price = close * (1 + rng.normal(0, 0.002))
+                db.add(
+                    IndexPrice(
+                        symbol="000300",
+                        name="沪深300",
+                        trade_date=day,
+                        open=round(float(open_price), 2),
+                        high=round(float(max(open_price, close) * 1.004), 2),
+                        low=round(float(min(open_price, close) * 0.996), 2),
+                        close=round(float(close), 2),
+                        volume=float(rng.integers(80_000_000, 400_000_000)),
+                        source="demo",
+                    )
+                )
+
         for index, (symbol, name) in enumerate(STOCKS.items()):
             stock = db.get(Stock, symbol) or Stock(symbol=symbol)
             stock.name = name
@@ -83,6 +125,14 @@ def seed() -> None:
                     )
                 ).all()
             )
+            has_real_pit = db.scalar(
+                select(PointInTimeFinancial.id)
+                .where(
+                    PointInTimeFinancial.symbol == symbol,
+                    PointInTimeFinancial.source != "demo",
+                )
+                .limit(1)
+            )
             for quarter in range(4):
                 report_date = date.today() - timedelta(days=quarter * 90 + 30)
                 metrics = {
@@ -103,6 +153,28 @@ def seed() -> None:
                                 source="demo",
                             )
                         )
+                    if not has_real_pit:
+                        available_at = min(date.today(), report_date + timedelta(days=20))
+                        pit_exists = db.scalar(
+                            select(PointInTimeFinancial).where(
+                                PointInTimeFinancial.symbol == symbol,
+                                PointInTimeFinancial.report_date == report_date,
+                                PointInTimeFinancial.available_at == available_at,
+                                PointInTimeFinancial.metric_name == metric_name,
+                            )
+                        )
+                        if not pit_exists:
+                            db.add(
+                                PointInTimeFinancial(
+                                    symbol=symbol,
+                                    report_date=report_date,
+                                    available_at=available_at,
+                                    metric_name=metric_name,
+                                    metric_value=round(float(value), 2),
+                                    source="demo",
+                                    is_estimated=False,
+                                )
+                            )
 
             templates = [
                 ("发布经营增长公告，核心业务保持增长", 0.72, "利好"),
@@ -162,6 +234,7 @@ def seed() -> None:
             db.add(config)
         db.commit()
         calculate_scores(db, list(STOCKS), date.today(), StrategyParameters())
+        run_data_quality_checks(db, list(STOCKS), "000300")
     print("Demo data seeded successfully.")
 
 

@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, formatNumber } from '../api'
 import { PageHeader } from '../components/PageHeader'
 import { ErrorPanel, Loading } from '../components/StatePanel'
+import { chartPalette, useTheme } from '../theme-context'
 import type { FinancialMetric, PriceBar, Stock } from '../types'
 
 export function Market() {
+  const { theme } = useTheme()
+  const chart = chartPalette(theme)
   const [stocks, setStocks] = useState<Stock[]>([])
   const [symbol, setSymbol] = useState('')
   const [prices, setPrices] = useState<PriceBar[]>([])
@@ -41,6 +44,8 @@ export function Market() {
   const change = latest && previous ? latest.close / previous.close - 1 : 0
   const latestReport = financials[0]?.report_date
   const latestMetrics = financials.filter((item) => item.report_date === latestReport).slice(0, 12)
+  const priceSource = latest?.source === 'tushare-pro' ? 'Tushare Pro' : latest?.source ?? '多源数据'
+  const financialSource = latestMetrics[0]?.source === 'tushare-pro' ? 'Tushare Pro' : latestMetrics[0]?.source
 
   const chartOption = useMemo(() => ({
     animation: false,
@@ -49,12 +54,12 @@ export function Market() {
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: [{ left: 54, right: 18, top: 24, height: '58%' }, { left: 54, right: 18, top: '73%', height: '15%' }],
     xAxis: [
-      { type: 'category', data: prices.map((row) => row.date), boundaryGap: true, axisLine: { lineStyle: { color: '#2a3b50' } }, axisLabel: { color: '#718096', show: false } },
-      { type: 'category', gridIndex: 1, data: prices.map((row) => row.date), boundaryGap: true, axisLine: { lineStyle: { color: '#2a3b50' } }, axisLabel: { color: '#718096' } },
+      { type: 'category', data: prices.map((row) => row.date), boundaryGap: true, axisLine: { lineStyle: { color: chart.line } }, axisLabel: { color: chart.muted, show: false } },
+      { type: 'category', gridIndex: 1, data: prices.map((row) => row.date), boundaryGap: true, axisLine: { lineStyle: { color: chart.line } }, axisLabel: { color: chart.muted } },
     ],
     yAxis: [
-      { scale: true, splitLine: { lineStyle: { color: '#18283a' } }, axisLabel: { color: '#718096' } },
-      { scale: true, gridIndex: 1, splitNumber: 2, splitLine: { show: false }, axisLabel: { color: '#718096' } },
+      { scale: true, splitLine: { lineStyle: { color: chart.split } }, axisLabel: { color: chart.muted } },
+      { scale: true, gridIndex: 1, splitNumber: 2, splitLine: { show: false }, axisLabel: { color: chart.muted } },
     ],
     dataZoom: [{ type: 'inside', xAxisIndex: [0, 1], start: Math.max(0, 100 - 12000 / Math.max(1, prices.length)), end: 100 }],
     series: [
@@ -68,7 +73,7 @@ export function Market() {
         data: prices.map((row) => ({ value: row.volume, itemStyle: { color: row.close >= row.open ? '#ff5b6e88' : '#26d6a088' } })),
       },
     ],
-  }), [prices])
+  }), [prices, chart.line, chart.muted, chart.split])
 
   if (error) return <ErrorPanel message={error} />
 
@@ -84,10 +89,10 @@ export function Market() {
         <div className="data-tag"><CalendarDays size={15} />更新至 {latest?.date ?? '—'}</div>
       </section>
       {loading ? <Loading /> : !prices.length ? (
-        <div className="empty-block tall"><TrendingUp /><strong>暂无行情数据</strong><span>到“策略实验室”同步 AKShare 数据或运行演示数据脚本。</span></div>
+        <div className="empty-block tall"><TrendingUp /><strong>暂无行情数据</strong><span>到“策略实验室”同步研究数据（Tushare 优先、公开源降级）或运行演示数据脚本。</span></div>
       ) : (
         <section className="market-grid">
-          <article className="panel price-panel"><div className="panel-head"><div><span className="section-kicker">PRICE ACTION</span><h2>历史行情</h2></div><span className="source-chip">AKShare · 前复权</span></div><ReactECharts option={chartOption} style={{ height: 460 }} /></article>
+          <article className="panel price-panel"><div className="panel-head"><div><span className="section-kicker">PRICE ACTION</span><h2>历史行情</h2></div><span className="source-chip">{priceSource} · 前复权</span></div><ReactECharts key={theme} option={chartOption} style={{ height: 460 }} /></article>
           <aside className="panel quote-panel">
             <div className="panel-head"><div><span className="section-kicker">SNAPSHOT</span><h2>当日切片</h2></div></div>
             <div className="quote-grid">
@@ -100,7 +105,7 @@ export function Market() {
         </section>
       )}
       <section className="panel financial-panel">
-        <div className="panel-head"><div><span className="section-kicker">FUNDAMENTALS</span><h2>最新财务指标</h2></div><span className="source-chip">报告期 {latestReport ?? '—'}</span></div>
+        <div className="panel-head"><div><span className="section-kicker">FUNDAMENTALS</span><h2>最新财务指标</h2></div><span className="source-chip">{financialSource ? `${financialSource} · ` : ''}报告期 {latestReport ?? '—'}</span></div>
         {latestMetrics.length ? <div className="metric-grid">{latestMetrics.map((metric) => (
           <div className="metric-item" key={metric.metric_name}><span>{metric.metric_name}</span><strong>{formatNumber(metric.metric_value)}</strong><small className={(metric.yoy ?? 0) >= 0 ? 'up' : 'down'}>{metric.yoy === null ? '同比 —' : `同比 ${metric.yoy > 0 ? '+' : ''}${metric.yoy.toFixed(2)}%`}</small></div>
         ))}</div> : <div className="empty-inline">暂无财务数据</div>}

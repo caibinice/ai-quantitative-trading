@@ -24,11 +24,19 @@ logs/
 outputs/
 output/
 .playwright-cli/
+.deploy/
 .coverage
 htmlcov/
 
 # Editors / OS
 .idea/
 .vscode/
+.claude/
+.codex/
+.cursor/
+.continue/
+.windsurf/
+.roo/
+.aider*
 .DS_Store
 Thumbs.db

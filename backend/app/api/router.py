@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, func, select, text
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.config import DEFAULT_STOCK_NAMES, get_settings
 from app.core.database import get_db
+from app.core.time import beijing_iso, utc_iso
 from app.models import (
     BacktestRun,
     DailyPrice,
@@ -25,14 +26,19 @@ from app.schemas import (
     BacktestRequest,
     ScoreRequest,
     StrategyConfigPayload,
+    StrategyParameters,
     SyncRequest,
 )
 from app.services.backtest import run_backtest_from_db
+from app.services.news_dedup import group_news_for_display
 from app.services.pipeline import sync_market_data
+from app.services.repository import ensure_stock
 from app.services.scoring import calculate_scores
 from app.services.sentiment import SentimentAnalyzer
+from app.services.task_queue import enqueue_task
 
 router = APIRouter()
+LEGACY_DEFAULT_WATCHLIST = ["000001", "600519", "300750", "601318", "000858"]
 
 
 def _strategy_payload(item: StrategyConfig) -> dict[str, Any]:
@@ -42,15 +48,15 @@ def _strategy_payload(item: StrategyConfig) -> dict[str, Any]:
         "description": item.description,
         "enabled": item.enabled,
         "watchlist": item.watchlist,
-        "parameters": item.parameters,
-        "updated_at": item.updated_at,
+        "parameters": StrategyParameters(**item.parameters).model_dump(),
+        "updated_at": utc_iso(item.updated_at),
     }
 
 
 def _default_strategy(db: Session) -> StrategyConfig:
     item = db.scalar(select(StrategyConfig).where(StrategyConfig.name == "默认情绪行情双因子"))
+    settings = get_settings()
     if item is None:
-        settings = get_settings()
         payload = StrategyConfigPayload(watchlist=settings.watchlist)
         item = StrategyConfig(
             name=payload.name,
@@ -59,6 +65,11 @@ def _default_strategy(db: Session) -> StrategyConfig:
             watchlist=payload.watchlist,
             parameters=payload.parameters.model_dump(),
         )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+    elif item.watchlist == LEGACY_DEFAULT_WATCHLIST:
+        item.watchlist = settings.watchlist
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -73,19 +84,25 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
 
 @router.get("/dashboard/summary")
 def dashboard_summary(db: Session = Depends(get_db)) -> dict[str, Any]:
+    watchlist = _default_strategy(db).watchlist
     counts = {
-        "stocks": db.scalar(select(func.count()).select_from(Stock)) or 0,
+        "stocks": len(watchlist),
         "price_rows": db.scalar(select(func.count()).select_from(DailyPrice)) or 0,
         "news": db.scalar(select(func.count()).select_from(NewsItem)) or 0,
         "analyzed": db.scalar(select(func.count()).select_from(SentimentAnalysis)) or 0,
     }
-    latest_score_date = db.scalar(select(func.max(FactorScore.score_date)))
+    latest_score_date = db.scalar(
+        select(func.max(FactorScore.score_date)).where(FactorScore.symbol.in_(watchlist))
+    )
     top_scores = []
     if latest_score_date:
         rows = db.execute(
             select(FactorScore, Stock.name)
             .join(Stock, Stock.symbol == FactorScore.symbol)
-            .where(FactorScore.score_date == latest_score_date)
+            .where(
+                FactorScore.score_date == latest_score_date,
+                FactorScore.symbol.in_(watchlist),
+            )
             .order_by(FactorScore.total_score.desc())
             .limit(5)
         ).all()
@@ -115,7 +132,7 @@ def dashboard_summary(db: Session = Depends(get_db)) -> dict[str, Any]:
                 "job_type": latest_job.job_type,
                 "status": latest_job.status,
                 "message": latest_job.message,
-                "started_at": latest_job.started_at,
+                "started_at": utc_iso(latest_job.started_at),
             }
             if latest_job
             else None
@@ -125,15 +142,26 @@ def dashboard_summary(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 @router.get("/stocks")
 def stocks(
-    search: str = "", limit: int = Query(default=200, ge=1, le=2000), db: Session = Depends(get_db)
+    search: str = "",
+    scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
+    limit: int = Query(default=200, ge=1, le=2000),
+    db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
     query = select(Stock).where(Stock.is_active.is_(True)).order_by(Stock.symbol)
+    watchlist: list[str] = []
+    if scope == "watchlist":
+        watchlist = _default_strategy(db).watchlist
+        query = query.where(Stock.symbol.in_(watchlist))
     if search:
         query = query.where((Stock.symbol.contains(search)) | (Stock.name.contains(search)))
-    return [
+    rows = [
         {"symbol": item.symbol, "name": item.name, "market": item.market, "industry": item.industry}
         for item in db.scalars(query.limit(limit)).all()
     ]
+    if watchlist:
+        position = {symbol: index for index, symbol in enumerate(watchlist)}
+        rows.sort(key=lambda item: position.get(item["symbol"], len(position)))
+    return rows
 
 
 @router.get("/market/{symbol}/prices")
@@ -164,6 +192,8 @@ def market_prices(
             "volume": row.volume,
             "amount": row.amount,
             "turnover_rate": row.turnover_rate,
+            "adjustment": row.adjustment,
+            "source": row.source,
         }
         for row in rows
     ]
@@ -186,6 +216,7 @@ def market_financials(
             "metric_name": row.metric_name,
             "metric_value": row.metric_value,
             "yoy": row.yoy,
+            "source": row.source,
         }
         for row in rows
     ]
@@ -196,6 +227,7 @@ def sentiment_news(
     symbol: str = "",
     kind: str = "",
     label: str = "",
+    scope: str = Query(default="watchlist", pattern="^(watchlist|all)$"),
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
@@ -206,11 +238,18 @@ def sentiment_news(
     )
     if symbol:
         query = query.where(NewsItem.symbol == symbol)
+    elif scope == "watchlist":
+        query = query.where(NewsItem.symbol.in_(_default_strategy(db).watchlist))
     if kind:
         query = query.where(NewsItem.kind == kind)
     if label:
         query = query.where(SentimentAnalysis.label == label)
-    rows = db.execute(query.limit(limit)).all()
+    fetch_limit = min(2000, limit * (4 if not symbol else 3))
+    rows = db.execute(query.limit(fetch_limit)).all()
+    analyses = {item.id: analysis for item, analysis in rows}
+    groups = group_news_for_display(
+        [item for item, _analysis in rows], collapse_across_symbols=not bool(symbol)
+    )[:limit]
     return [
         {
             "id": item.id,
@@ -219,7 +258,8 @@ def sentiment_news(
             "title": item.title,
             "source": item.source,
             "source_url": item.source_url,
-            "published_at": item.published_at,
+            "published_at": beijing_iso(item.published_at, naive_is_beijing=True),
+            "related_symbols": group.related_symbols,
             "label": analysis.label if analysis else "待分析",
             "score": analysis.score if analysis else None,
             "confidence": analysis.confidence if analysis else None,
@@ -227,19 +267,85 @@ def sentiment_news(
             "rationale": analysis.rationale if analysis else "",
             "model": analysis.model if analysis else "",
         }
-        for item, analysis in rows
+        for group in groups
+        for item, analysis in [(group.item, analyses.get(group.item.id))]
+    ]
+
+
+@router.get("/sentiment/sources")
+def sentiment_sources() -> list[dict[str, Any]]:
+    tushare_configured = bool(get_settings().tushare_token)
+    return [
+        {
+            "id": "eastmoney-news",
+            "name": "东方财富个股新闻",
+            "kind": "新闻",
+            "status": "active",
+            "registration": "无需注册",
+            "access": "通过 AKShare stock_news_em 采集",
+            "note": "按股票代码抓取，适合作为当前默认公开新闻源；源站变更或限流时可能延迟。",
+        },
+        {
+            "id": "eastmoney-notices",
+            "name": "东方财富公司公告",
+            "kind": "公告",
+            "status": "active",
+            "registration": "无需注册",
+            "access": "通过 AKShare stock_individual_notice_report 采集",
+            "note": "保留公告标题、日期和原文链接。",
+        },
+        {
+            "id": "cninfo-notices",
+            "name": "巨潮资讯信息披露公告",
+            "kind": "公告",
+            "status": "active",
+            "registration": "无需注册",
+            "access": "通过 AKShare stock_zh_a_disclosure_report_cninfo 采集",
+            "note": "与东方财富公告并行采集并按内容哈希去重，便于交叉核验。",
+        },
+        {
+            "id": "tushare-major-news",
+            "name": "Tushare Pro 新闻通讯",
+            "kind": "新闻",
+            "status": "optional",
+            "registration": (
+                "Token 已配置；仍需单独开通新闻舆情权限"
+                if tushare_configured
+                else "需要注册 Token，并单独开通新闻舆情权限"
+            ),
+            "access": "news（独立权限）",
+            "note": (
+                "2000 积分已用于行情和财务数据，但不包含新闻 API；"
+                "当前仍由东方财富与巨潮资讯提供舆情材料。"
+            ),
+        },
+        {
+            "id": "gdelt",
+            "name": "GDELT 全球新闻",
+            "kind": "国际新闻",
+            "status": "candidate",
+            "registration": "旧版 DOC 2.0 无 Key；新版 Cloud API 需账号/API Key",
+            "access": "GDELT DOC 2.0 / GDELT Cloud",
+            "note": "国际事件覆盖广，但中文公司映射、接口代际和噪声控制需先做独立评估。",
+        },
     ]
 
 
 @router.get("/rankings")
 def rankings(as_of: date | None = None, db: Session = Depends(get_db)) -> dict[str, Any]:
-    score_date = as_of or db.scalar(select(func.max(FactorScore.score_date)))
+    watchlist = _default_strategy(db).watchlist
+    score_date = as_of or db.scalar(
+        select(func.max(FactorScore.score_date)).where(FactorScore.symbol.in_(watchlist))
+    )
     if score_date is None:
         return {"score_date": None, "items": []}
     rows = db.execute(
         select(FactorScore, Stock.name)
         .join(Stock, Stock.symbol == FactorScore.symbol)
-        .where(FactorScore.score_date == score_date)
+        .where(
+            FactorScore.score_date == score_date,
+            FactorScore.symbol.in_(watchlist),
+        )
         .order_by(desc(FactorScore.total_score))
     ).all()
     return {
@@ -270,16 +376,43 @@ def update_strategy(
     payload: StrategyConfigPayload, db: Session = Depends(get_db)
 ) -> dict[str, Any]:
     item = db.scalar(select(StrategyConfig).where(StrategyConfig.name == payload.name))
+    previous_watchlist = set(item.watchlist if item is not None else [])
     if item is None:
         item = StrategyConfig(name=payload.name)
     item.description = payload.description
     item.enabled = payload.enabled
     item.watchlist = payload.watchlist
     item.parameters = payload.parameters.model_dump()
+    for symbol in payload.watchlist:
+        ensure_stock(db, symbol, DEFAULT_STOCK_NAMES.get(symbol, symbol))
     db.add(item)
     db.commit()
     db.refresh(item)
-    return _strategy_payload(item)
+    response = _strategy_payload(item)
+    added = [symbol for symbol in payload.watchlist if symbol not in previous_watchlist]
+    missing_data = [
+        symbol
+        for symbol in added
+        if not db.scalar(
+            select(func.count())
+            .select_from(DailyPrice)
+            .where(DailyPrice.symbol == symbol)
+        )
+    ]
+    if missing_data:
+        task = enqueue_task(
+            db,
+            "market_sync",
+            {
+                "symbols": missing_data,
+                "start_date": (date.today() - timedelta(days=400)).isoformat(),
+                "end_date": date.today().isoformat(),
+            },
+            priority=80,
+        )
+        response["sync_task_id"] = task.id
+        response["sync_symbols"] = missing_data
+    return response
 
 
 @router.post("/pipeline/sync", status_code=status.HTTP_200_OK)
@@ -337,7 +470,7 @@ def create_backtest(payload: BacktestRequest, db: Session = Depends(get_db)) -> 
         "metrics": run.metrics,
         "equity_curve": run.equity_curve,
         "parameters": run.parameters,
-        "created_at": run.created_at,
+        "created_at": utc_iso(run.created_at),
     }
 
 
@@ -351,7 +484,7 @@ def list_backtests(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
             "start_date": item.start_date,
             "end_date": item.end_date,
             "metrics": item.metrics,
-            "created_at": item.created_at,
+            "created_at": utc_iso(item.created_at),
         }
         for item in rows
     ]
@@ -370,7 +503,7 @@ def get_backtest(run_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
         "parameters": item.parameters,
         "metrics": item.metrics,
         "equity_curve": item.equity_curve,
-        "created_at": item.created_at,
+        "created_at": utc_iso(item.created_at),
     }
 
 
@@ -384,8 +517,8 @@ def jobs(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
             "status": item.status,
             "message": item.message,
             "details": item.details,
-            "started_at": item.started_at,
-            "finished_at": item.finished_at,
+            "started_at": utc_iso(item.started_at),
+            "finished_at": utc_iso(item.finished_at),
         }
         for item in rows
     ]

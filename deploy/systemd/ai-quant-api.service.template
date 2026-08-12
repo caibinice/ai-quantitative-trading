@@ -1,0 +1,24 @@
+[Unit]
+Description=AI Quant Research Cockpit API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_ROOT__/current/backend
+EnvironmentFile=__APP_ROOT__/shared/app.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APP_ROOT__/shared/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+MemoryHigh=450M
+MemoryMax=650M
+CPUQuota=150%
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

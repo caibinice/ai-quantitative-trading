@@ -7,10 +7,11 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.models import NewsItem, SentimentAnalysis
+from app.services.news_dedup import deduplicate_persisted_news
 
 POSITIVE_WORDS = (
     "增长",
@@ -85,21 +86,27 @@ class SentimentAnalyzer:
 正文：{content[:6000]}
 """
         url = f"{self.settings.llm_base_url.rstrip('/')}/chat/completions"
-        response = httpx.post(
-            url,
-            headers={"Authorization": f"Bearer {self.settings.llm_api_key}"},
-            json={
-                "model": self.settings.llm_model,
-                "temperature": 0,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {"role": "system", "content": "你输出严格 JSON，结论保持克制。"},
-                    {"role": "user", "content": prompt},
-                ],
-            },
-            timeout=self.settings.llm_timeout_seconds,
-        )
-        response.raise_for_status()
+        body: dict[str, Any] = {
+            "model": self.settings.llm_model,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": "你输出严格 JSON，结论保持克制。"},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if self.settings.llm_thinking_enabled:
+            body["thinking"] = {"type": "enabled"}
+            body["reasoning_effort"] = self.settings.llm_reasoning_effort
+        else:
+            body["temperature"] = 0
+
+        try:
+            response = self._post_llm(url, body, self.settings.llm_api_key)
+        except httpx.HTTPError as exc:
+            backup = self.settings.llm_api_key_backup
+            if not backup or backup == self.settings.llm_api_key or not _can_retry_with_backup(exc):
+                raise
+            response = self._post_llm(url, body, backup)
         payload = _extract_json(response.json()["choices"][0]["message"]["content"])
         score = _clamp(payload.get("score", 0), -1, 1)
         label = str(payload.get("label", "中性"))
@@ -113,6 +120,18 @@ class SentimentAnalyzer:
             rationale=str(payload.get("rationale", ""))[:1000],
             model=self.settings.llm_model,
         )
+
+    def _post_llm(
+        self, url: str, body: dict[str, Any], api_key: str
+    ) -> httpx.Response:
+        response = httpx.post(
+            url,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+            timeout=self.settings.llm_timeout_seconds,
+        )
+        response.raise_for_status()
+        return response
 
     def _heuristic(self, title: str, content: str) -> SentimentResult:
         text = f"{title} {content}"
@@ -130,22 +149,63 @@ class SentimentAnalyzer:
             model="heuristic-v1",
         )
 
-    def analyze_pending(self, db: Session, limit: int = 50, force: bool = False) -> int:
-        query = select(NewsItem).options(selectinload(NewsItem.sentiment)).order_by(
-            NewsItem.published_at.desc()
-        )
+    def analyze_pending(
+        self,
+        db: Session,
+        limit: int = 50,
+        force: bool = False,
+        write_batch_size: int = 10,
+    ) -> int:
+        if write_batch_size < 1:
+            raise ValueError("write_batch_size 必须大于 0")
+        # Clean legacy same-stock duplicates before selecting pending work so
+        # one event never consumes multiple model calls for the same company.
+        deduplicate_persisted_news(db, commit=True)
+        query = select(NewsItem).order_by(NewsItem.published_at.desc())
         if not force:
             query = query.where(~NewsItem.sentiment.has())
         items = list(db.scalars(query.limit(limit)).all())
-        for item in items:
-            result = self.analyze(item.title, item.content, item.kind)
-            analysis = item.sentiment or SentimentAnalysis(news_id=item.id)
-            analysis.label = result.label
-            analysis.score = result.score
-            analysis.confidence = result.confidence
-            analysis.summary = result.summary
-            analysis.rationale = result.rationale
-            analysis.model = result.model
-            db.add(analysis)
+        pending = [(item.id, item.title, item.content, item.kind) for item in items]
+
+        # The LLM phase can take many minutes. End the read transaction now so
+        # the worker does not keep a remote MySQL connection checked out and
+        # discover that it was reset only when the final INSERT starts.
         db.commit()
+
+        for offset in range(0, len(pending), write_batch_size):
+            batch = pending[offset : offset + write_batch_size]
+            results = [
+                (news_id, self.analyze(title, content, kind))
+                for news_id, title, content, kind in batch
+            ]
+
+            news_ids = [news_id for news_id, _result in results]
+            existing = {
+                item.news_id: item
+                for item in db.scalars(
+                    select(SentimentAnalysis).where(SentimentAnalysis.news_id.in_(news_ids))
+                ).all()
+            }
+            for news_id, result in results:
+                analysis = existing.get(news_id) or SentimentAnalysis(news_id=news_id)
+                analysis.label = result.label
+                analysis.score = result.score
+                analysis.confidence = result.confidence
+                analysis.summary = result.summary
+                analysis.rationale = result.rationale
+                analysis.model = result.model
+                db.add(analysis)
+            # Save partial progress in small statements. If a later upstream or
+            # database call fails, earlier analyzed batches remain available.
+            db.commit()
         return len(items)
+
+
+def _can_retry_with_backup(exc: Exception) -> bool:
+    if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {401, 402, 403, 408, 409, 429} or (
+            exc.response.status_code >= 500
+        )
+    return False

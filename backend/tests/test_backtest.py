@@ -64,3 +64,16 @@ def test_future_sentiment_does_not_enter_earlier_dates() -> None:
 
     # The only positive event arrives on the final date, whose signal would apply after the sample.
     assert result["weights"]["000001"].sum() == 0
+
+
+def test_explicit_index_replaces_equal_weight_benchmark() -> None:
+    dates = pd.bdate_range("2025-01-02", periods=8)
+    index_prices = pd.Series([100, 101, 102, 103, 104, 105, 106, 108], index=dates)
+    result = run_dual_factor_backtest(
+        {"000001": pd.Series([10] * 8, index=dates, dtype=float)},
+        {"000001": []},
+        _parameters(),
+        index_prices,
+    )
+
+    assert result["metrics"]["benchmark_return"] == 0.08

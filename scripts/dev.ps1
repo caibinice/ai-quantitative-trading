@@ -13,14 +13,24 @@ $Backend = Start-Process `
     -WorkingDirectory (Join-Path $Root 'backend') `
     -WindowStyle Hidden `
     -PassThru
+$Worker = Start-Process `
+    -FilePath $Python `
+    -ArgumentList @('-m', 'app.worker', '--poll-seconds', '1') `
+    -WorkingDirectory (Join-Path $Root 'backend') `
+    -WindowStyle Hidden `
+    -PassThru
 
 try {
     Write-Host 'API: http://127.0.0.1:8000/docs' -ForegroundColor Cyan
-    Write-Host 'Web: http://127.0.0.1:5173' -ForegroundColor Cyan
-    Write-Host '按 Ctrl+C 同时停止前后端。' -ForegroundColor DarkGray
+    Write-Host 'Web: http://127.0.0.1:5173/quant/' -ForegroundColor Cyan
+    Write-Host 'Worker: MySQL 任务队列已启动' -ForegroundColor Cyan
+    Write-Host '按 Ctrl+C 同时停止前端、API 和 Worker。' -ForegroundColor DarkGray
     & (Get-Command node).Source $Vite --host 127.0.0.1 --port 5173
 } finally {
     if ($Backend -and -not $Backend.HasExited) {
         Stop-Process -Id $Backend.Id -Force
+    }
+    if ($Worker -and -not $Worker.HasExited) {
+        Stop-Process -Id $Worker.Id -Force
     }
 }

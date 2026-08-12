@@ -25,7 +25,7 @@ if ($LASTEXITCODE -ne 0) { throw '安装 Python 依赖失败。' }
 
 Push-Location (Join-Path $Root 'frontend')
 try {
-    npm install --no-audit --no-fund
+    npm ci --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw '安装前端依赖失败。' }
 } finally {
     Pop-Location

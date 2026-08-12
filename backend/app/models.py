@@ -129,6 +129,24 @@ class StrategyConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
+class LearningProgress(Base):
+    __tablename__ = "aq_learning_progress"
+
+    profile_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    completed: Mapped[list[str]] = mapped_column(JSON, default=list)
+    quiz_scores: Mapped[dict[str, int]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class AutomationSetting(Base):
+    __tablename__ = "aq_automation_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    news_analysis_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    news_analysis_interval_hours: Mapped[int] = mapped_column(Integer, default=6)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class FactorScore(Base):
     __tablename__ = "aq_factor_scores"
     __table_args__ = (
@@ -170,3 +188,133 @@ class JobRun(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class TradingCalendar(Base):
+    __tablename__ = "aq_trading_calendar"
+
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    is_open: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    source: Mapped[str] = mapped_column(String(48), default="akshare-sina")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class IndexPrice(Base):
+    __tablename__ = "aq_index_prices"
+    __table_args__ = (
+        UniqueConstraint("symbol", "trade_date", name="uq_aq_index_symbol_date"),
+        Index("ix_aq_index_symbol_date", "symbol", "trade_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(80), default="")
+    trade_date: Mapped[date] = mapped_column(Date)
+    open: Mapped[float] = mapped_column(Float)
+    high: Mapped[float] = mapped_column(Float)
+    low: Mapped[float] = mapped_column(Float)
+    close: Mapped[float] = mapped_column(Float)
+    volume: Mapped[float] = mapped_column(Float, default=0)
+    amount: Mapped[float] = mapped_column(Float, default=0)
+    source: Mapped[str] = mapped_column(String(48), default="akshare")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PointInTimeFinancial(Base):
+    __tablename__ = "aq_pit_financials"
+    __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "report_date",
+            "available_at",
+            "metric_name",
+            name="uq_aq_pit_financial",
+        ),
+        Index("ix_aq_pit_symbol_available", "symbol", "available_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey("aq_stocks.symbol"), index=True)
+    report_date: Mapped[date] = mapped_column(Date)
+    available_at: Mapped[date] = mapped_column(Date, index=True)
+    metric_name: Mapped[str] = mapped_column(String(120))
+    metric_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source: Mapped[str] = mapped_column(String(48), default="akshare-yjbb")
+    is_estimated: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class ResearchTask(Base):
+    __tablename__ = "aq_research_tasks"
+    __table_args__ = (
+        Index("ix_aq_task_queue", "status", "priority", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_type: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
+    priority: Mapped[int] = mapped_column(Integer, default=100)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    error: Mapped[str] = mapped_column(Text, default="")
+    progress: Mapped[float] = mapped_column(Float, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=2)
+    worker_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class WalkForwardRun(Base):
+    __tablename__ = "aq_walk_forward_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(160))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    benchmark_symbol: Mapped[str] = mapped_column(String(16), default="000300")
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSON)
+    windows: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON)
+    equity_curve: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DataQualityRun(Base):
+    __tablename__ = "aq_data_quality_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    status: Mapped[str] = mapped_column(String(24), default="running")
+    checks_count: Mapped[int] = mapped_column(Integer, default=0)
+    issues_count: Mapped[int] = mapped_column(Integer, default=0)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class DataQualityIssue(Base):
+    __tablename__ = "aq_data_quality_issues"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
+    category: Mapped[str] = mapped_column(String(64), index=True)
+    severity: Mapped[str] = mapped_column(String(16), index=True)
+    entity_type: Mapped[str] = mapped_column(String(32))
+    entity_id: Mapped[str] = mapped_column(String(80), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class BlogComment(Base):
+    __tablename__ = "aq_blog_comments"
+    __table_args__ = (Index("ix_aq_blog_comments_created", "created_at", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    display_name: Mapped[str] = mapped_column(String(40), default="Anonymous")
+    email: Mapped[str] = mapped_column(String(254))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

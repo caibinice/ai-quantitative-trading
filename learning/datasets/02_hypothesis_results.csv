@@ -1,0 +1,7 @@
+experiment,period,gross_return,turnover,cost_rate,benchmark_return
+momentum_20,in_sample,0.124,3.20,0.0010,0.081
+momentum_20,out_of_sample,0.036,1.35,0.0010,0.041
+momentum_60,in_sample,0.098,1.50,0.0010,0.081
+momentum_60,out_of_sample,0.044,0.72,0.0010,0.041
+random_rule,in_sample,0.151,6.20,0.0010,0.081
+random_rule,out_of_sample,-0.027,2.80,0.0010,0.041
