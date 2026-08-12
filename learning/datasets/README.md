@@ -1,13 +1,14 @@
-# 教学数据集说明
+# Teaching Dataset Notes
 
-这里的 CSV 都是为了教学而人工构造的小样本，不代表真实证券行情，也不能用于投资决策。
-它们刻意保留了缺失日期、重复记录、异常价格、未来公告等边界情况，方便你在本地反复运行、
-修改和验证。每份数据都对应 `learning/labs/` 下的一个实验脚本，网页详情页提供下载入口、
-运行命令、预期输出和自查步骤。
+**English | [简体中文](./README_CN.md)**
 
-统一约定：
+Every CSV in this directory is a small, hand-crafted teaching sample. The data does not represent real security prices and must not be used for investment decisions. Missing dates, duplicate records, abnormal prices, and future announcements are intentionally preserved so they can be inspected, modified, and validated locally.
 
-- 日期采用 `YYYY-MM-DD`，带时间的数据采用 ISO 8601 并显式写 `+08:00`。
-- 收益率使用小数保存，例如 `0.025` 表示 `2.5%`。
-- 金额和价格没有真实单位；股票代码仅作为教学标识。
-- 先原样运行，再只改一个参数，并记录输出变化。
+Each dataset maps to one runnable script under `learning/labs/`. The corresponding web lesson provides its download link, command, expected output, and self-check steps.
+
+Conventions:
+
+- Dates use `YYYY-MM-DD`; timestamps use ISO 8601 with an explicit `+08:00` offset.
+- Returns are stored as decimals, so `0.025` means `2.5%`.
+- Amounts and prices have no real-world unit, and ticker symbols are teaching identifiers only.
+- Run the dataset unchanged first, then modify one parameter at a time and record the output difference.

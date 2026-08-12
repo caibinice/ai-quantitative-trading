@@ -1,36 +1,37 @@
-# AI 量化学习手册
+# AI Quant Learning Guide
 
-这套手册与项目代码一一对应，不是独立于项目的理论目录。网页入口是
-`http://127.0.0.1:5173/quant/learn`。学习进度和测验成绩先写入浏览器
-`localStorage`，API 可用时同步到 MySQL，因此可以跨设备继续学习。
+**English | [简体中文](./README_CN.md)**
 
-## 建议节奏
+This guide maps directly to the project codebase rather than presenting a detached theory syllabus. Open it in the web app at `http://127.0.0.1:5173/quant/learn`. Progress and quiz scores are stored in browser `localStorage` first and synchronized to MySQL whenever the API is available, so the same course can continue across devices.
 
-| 阶段 | 章节 | 建议时间 | 阶段成果 |
-|---|---|---:|---|
-| 1. 建立地图 | 量化地图、项目导览 | 1 周 | 能启动系统并解释研究闭环 |
-| 2. 数据语言 | Python 迁移、NumPy/pandas | 2 周 | 能独立处理时间序列 |
-| 3. 可信策略 | 市场数据、因子回测 | 2 周 | 能实现没有未来数据的回测 |
-| 4. AI 与验证 | 舆情因子、Walk-forward | 2 周 | 能审计文本因子和样本外结果 |
-| 5. 研究系统 | 工程治理、毕业项目 | 1–2 周 | 交付一份可复现研究报告 |
+## Suggested pace
 
-建议每周投入 5–8 小时。每章按下面顺序：
+| Stage | Chapters | Suggested time | Outcome |
+| --- | --- | ---: | --- |
+| 1. Build the map | Stock and candlestick basics; Quant map; Project tour | 1 week | Start the system and explain the research loop |
+| 2. Learn the data language | Python bridge; NumPy/pandas | 2 weeks | Process time series independently |
+| 3. Build trustworthy strategies | Market data; Factor backtesting | 2 weeks | Implement a backtest without future information |
+| 4. Add AI and validation | Sentiment factor; Walk-forward | 2 weeks | Audit text factors and out-of-sample results |
+| 5. Complete a research system | Engineering governance; Capstone | 1–2 weeks | Deliver a reproducible research report |
 
-1. 点击三个“知识梗概”卡片，依次阅读详情页的心智模型、深度讲解和流程图。
-2. 阅读每条误区的“为什么会错 / 正确做法 / 自查问题”，不要只背结论。
-3. 下载详情页提供的教学 CSV 和跟练脚本，按“怎么做 / 预期结果”逐步运行。
-4. 对照代码逐段解读，确认输出与页面列出的预期值一致，再只修改一个参数。
-5. 完成 Checklist。
-6. 完成 3 道小测验，至少答对 2 道。
-7. 把命令、输出、改动和不理解的点记录到自己的研究日志。
+Plan for five to eight hours per week. For every chapter:
 
-十一章共包含 33 个详情页。每页都有白话术语、完整讲解、可视流程、具体误区、逐步跟练、代码解读、预期输出、验证清单和有原文链接的延伸阅读。章节页与详情页列出的源码、测试、教学数据和实验脚本都可以点击下载；下载接口只开放教学相关目录，不会提供凭证、环境文件或 Git 元数据。
+1. Open its three concept cards and read the mental model, deep dive, and flowchart.
+2. Study why each common mistake fails, the correct approach, and its self-check question instead of memorizing only the conclusion.
+3. Download the teaching CSV and guided script, then follow the step-by-step instructions and expected output.
+4. Read the annotated code section by section, confirm the output, and change only one parameter at a time.
+5. Complete the checklist.
+6. Take the three-question quiz and answer at least two correctly.
+7. Record commands, output, changes, and open questions in a research journal.
 
-## 运行五个实验
+The 11 chapters contain 33 detail pages. Each page includes plain-language terminology, a complete explanation, a visual flow, concrete failure modes, guided exercises, annotated code, expected output, a verification checklist, and further reading with original links. Source files, tests, teaching datasets, and labs listed by chapter can be downloaded from the UI. The download API is allowlisted to educational directories and never exposes credentials, environment files, or Git metadata.
 
-在项目根目录执行：
+## Run the six examples
+
+From the repository root:
 
 ```powershell
+.\.venv\Scripts\python.exe learning\examples\00_kline_basics.py
 .\.venv\Scripts\python.exe learning\examples\01_python_bridge.py
 .\.venv\Scripts\python.exe learning\examples\02_pandas_timeseries.py
 .\.venv\Scripts\python.exe learning\examples\03_signal_delay.py
@@ -38,13 +39,11 @@
 .\.venv\Scripts\python.exe learning\examples\05_walk_forward.py
 ```
 
-每个脚本最后都应输出 `DEMO_OK`。它们同时被 pytest 调用，防止学习资料随项目演进而失效。
+Each script ends with `DEMO_OK`. Pytest also runs these files so the learning material cannot silently drift away from the project implementation.
 
-## 运行十一组零基础跟练
+## Run the 11 beginner labs
 
-每章还有一份位于 `learning/datasets/` 的人工教学 CSV，以及一份位于
-`learning/labs/` 的可运行脚本。它们不联网、不调用大模型、不连接券商，最后应输出
-`LAB_OK`。先在网页详情页阅读步骤和预期结果，再运行对应命令。例如：
+Every chapter also has a hand-crafted CSV in `learning/datasets/` and a runnable script in `learning/labs/`. They work offline, do not call an LLM, do not connect to a brokerage, and end with `LAB_OK`. Read the steps and expected output in the web lesson before running the matching command. For example:
 
 ```powershell
 .\.venv\Scripts\python.exe learning\labs\01_market_basics_lab.py
@@ -52,44 +51,38 @@
 .\.venv\Scripts\python.exe learning\labs\11_capstone_lab.py
 ```
 
-教学数据刻意包含日期缺口、除权断层、未来公告、重复新闻和异常行情。不要直接“修好”后
-再运行；先观察测试怎样暴露问题，然后每次只修改一个字段或参数。
+The teaching datasets deliberately contain missing dates, adjustment discontinuities, future announcements, duplicate news, and abnormal prices. Do not “fix everything” before the first run. Observe how the checks expose each problem, then modify one field or parameter at a time.
 
-## 毕业研究模板
+## Capstone research template
 
-最终成果不是一条漂亮曲线，而是一条完整证据链：
+The final deliverable is not merely an attractive equity curve; it is a complete evidence chain:
 
-1. **假设**：为什么这个因子可能有效？什么结果会否定它？
-2. **数据**：来源、股票池、区间、复权、缺失和真实可得时间。
-3. **方法**：因子、门槛、排序、权重、执行延迟、成本和基准。
-4. **样本内结果**：收益、回撤、夏普、换手，以及参数选择方法。
-5. **样本外结果**：Walk-forward 每个窗口和最终拼接曲线。
-6. **稳健性**：替代参数、市场阶段、数据异常和模型版本。
-7. **局限**：停牌、涨跌停、冲击成本、容量、舆情误判和幸存者偏差。
-8. **结论**：继续研究、修改假设或停止投入，并说明理由。
+1. **Hypothesis:** why might the factor work, and what result would falsify it?
+2. **Data:** sources, universe, period, adjustment, missing values, and true availability times.
+3. **Method:** factors, thresholds, ranking, weights, execution delay, costs, and benchmark.
+4. **In-sample results:** return, drawdown, Sharpe ratio, turnover, and the parameter-selection method.
+5. **Out-of-sample results:** every walk-forward window and the final stitched equity curve.
+6. **Robustness:** alternative parameters, market regimes, data anomalies, and model versions.
+7. **Limitations:** suspensions, price limits, market impact, capacity, sentiment errors, and survivorship bias.
+8. **Conclusion:** continue, revise the hypothesis, or stop, together with the reason.
 
-## 课程结构参考
+## Curriculum references
 
-手册只参考课程组织方式并链接原始资料，不复制第三方课程正文：
+The academy borrows course-organization ideas and links to original material; it does not reproduce third-party course text.
 
-- [Python Tutorial](https://docs.python.org/3/tutorial/)：有其他语言经验者的官方语法入口。
-- [CS50P](https://cs50.harvard.edu/python/)：讲解、练习、测试和最终项目的课程节奏。
-- [NumPy Learn](https://numpy.org/learn/)：科学计算基础。
-- [pandas Getting Started](https://pandas.pydata.org/docs/getting_started/intro_tutorials/)：表格和时间序列。
-- [Georgia Tech CS 7646](https://omscs.gatech.edu/cs-7646-machine-learning-trading)：
-  金融数据、计算投资和机器学习交易的三段式结构。
-- [scikit-learn TimeSeriesSplit](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html)：
-  时间顺序数据的样本外验证。
-- [QuantEcon Lectures](https://quantecon.org/lectures/)：后续补充概率、经济和金融计算。
-- [上交所投资者教育](https://edu.sse.com.cn/)：证券、交易规则、风险和定期报告基础。
-- [巨潮资讯](https://www.cninfo.com.cn/)：核对上市公司法定公告及披露时间。
-- [Backtest Overfitting](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2308659)：
-  Bailey、Borwein、López de Prado 与 Zhu 对多次试验和回测过拟合的讨论。
-- [AQR Insights](https://www.aqr.com/Insights)：因子、组合构建、成本和回测折扣的公开从业观点。
-- [Robot Wealth](https://robotwealth.com/backtesting-bias-feels-good-until-you-blow-up/)：
-  从业者对简单规则、样本外验证和回测偏差的经验总结。
+- [Python Tutorial](https://docs.python.org/3/tutorial/): the official syntax entry point for programmers coming from another language.
+- [CS50P](https://cs50.harvard.edu/python/): a useful rhythm of explanation, exercises, tests, and a final project.
+- [NumPy Learn](https://numpy.org/learn/): scientific-computing foundations.
+- [pandas Getting Started](https://pandas.pydata.org/docs/getting_started/intro_tutorials/): tables and time series.
+- [Georgia Tech CS 7646](https://omscs.gatech.edu/cs-7646-machine-learning-trading): a progression through financial data, computational investing, and machine learning for trading.
+- [scikit-learn TimeSeriesSplit](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html): out-of-sample validation for time-ordered data.
+- [QuantEcon Lectures](https://quantecon.org/lectures/): additional probability, economics, and financial-computing material.
+- [SSE Investor Education](https://edu.sse.com.cn/): securities, trading rules, risks, and periodic reports.
+- [CNINFO](https://www.cninfo.com.cn/): statutory company disclosures and announcement times.
+- [Backtest Overfitting](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2308659): Bailey, Borwein, López de Prado, and Zhu on repeated trials and backtest overfitting.
+- [AQR Insights](https://www.aqr.com/Insights): public practitioner perspectives on factors, portfolio construction, costs, and backtest haircuts.
+- [Robot Wealth](https://robotwealth.com/backtesting-bias-feels-good-until-you-blow-up/): practitioner experience with simple rules, out-of-sample validation, and backtest bias.
 
-网页中的从业者内容均为摘要并链接原文。它们用于训练“比较观点与证据”的能力，
-不被当成事实定律，也不构成对任何股票或策略的推荐。
+Practitioner material in the web academy is summarized and linked to the original source. It is used to practice comparing viewpoints and evidence, not as an immutable law or a recommendation for any stock or strategy.
 
-> 本学习资料和项目只用于研究，不构成投资建议，也不包含真实下单能力。
+> The academy and project are for research only, do not constitute investment advice, and contain no live-order capability.
