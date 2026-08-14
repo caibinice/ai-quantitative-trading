@@ -68,21 +68,21 @@ def test_deepseek_thinking_request_uses_backup_key_after_quota_error(monkeypatch
             llm_base_url="https://api.deepseek.com",
             llm_api_key="primary-key",
             llm_api_key_backup="backup-key",
-            llm_model="deepseek-v4-pro",
+            llm_model="deepseek-v4-flash",
             llm_thinking_enabled=True,
-            llm_reasoning_effort="high",
+            llm_reasoning_effort="max",
         )
     )
 
     result = analyzer.analyze("公司中标", "公告披露新增订单")
 
     assert result.label == "利好"
-    assert result.model == "deepseek-v4-pro"
+    assert result.model == "deepseek-v4-flash"
     assert len(calls) == 2
     assert calls[0]["headers"]["Authorization"] == "Bearer primary-key"
     assert calls[1]["headers"]["Authorization"] == "Bearer backup-key"
     assert calls[0]["json"]["thinking"] == {"type": "enabled"}
-    assert calls[0]["json"]["reasoning_effort"] == "high"
+    assert calls[0]["json"]["reasoning_effort"] == "max"
     assert "temperature" not in calls[0]["json"]
 
 

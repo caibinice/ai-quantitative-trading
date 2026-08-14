@@ -1,8 +1,8 @@
 [Unit]
-Description=Renew AI Quant HTTPS certificate twice daily
+Description=Check AI platform HTTPS certificate renewal off peak
 
 [Timer]
-OnCalendar=*-*-* 03,15:17:00
+OnCalendar=*-*-* 03,12:17:00
 RandomizedDelaySec=30m
 Persistent=true
 

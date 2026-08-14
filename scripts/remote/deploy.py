@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import secrets
-import socket
 import subprocess
 import sys
 import tarfile
@@ -42,7 +41,7 @@ def build_archive(release_id: str) -> Path:
 
 
 def build_app_env(
-    public_ip: str,
+    public_host: str,
     blog_admin_token: str,
     action_auth: dict[str, str],
 ) -> bytes:
@@ -60,7 +59,7 @@ def build_app_env(
         "ROOT_PATH": "/quant",
         "DATABASE_URL": database_url,
         "DATABASE_ECHO": "false",
-        "CORS_ORIGINS": f"https://{public_ip}",
+        "CORS_ORIGINS": f"https://{public_host},https://www.{public_host}",
         "TUSHARE_ENABLED": "true" if tushare.get("token") else "false",
         "TUSHARE_TOKEN": tushare.get("token", ""),
         "TUSHARE_BASE_URL": tushare.get("base-url", "https://api.tushare.pro"),
@@ -70,9 +69,9 @@ def build_app_env(
         "LLM_BASE_URL": llm.get("base-url", "https://api.deepseek.com"),
         "LLM_API_KEY": llm.get("api-key", ""),
         "LLM_API_KEY_BACKUP": llm.get("api-key-backup", ""),
-        "LLM_MODEL": llm.get("model", "deepseek-v4-pro"),
+        "LLM_MODEL": llm.get("model", "deepseek-v4-flash"),
         "LLM_THINKING_ENABLED": "true",
-        "LLM_REASONING_EFFORT": "high",
+        "LLM_REASONING_EFFORT": "max",
         "SCHEDULER_ENABLED": "true",
         "DEFAULT_WATCHLIST": DEFAULT_WATCHLIST,
         "PRICE_SYNC_CRON": "20 18 * * 1-5",
@@ -181,7 +180,7 @@ def main() -> None:
     archive = build_archive(release_id)
     credentials = read_credentials()
     ssh = credentials["remote.ssh"]
-    public_ip = socket.gethostbyname(ssh["host"])
+    public_host = ssh["host"]
     blog_admin_token = load_or_create_blog_admin_token()
     action_auth = load_or_create_action_auth()
 
@@ -195,7 +194,7 @@ def main() -> None:
         print(f"Uploading release {release_id}...")
         remote.upload_file(archive, archive_remote)
         remote.upload_bytes(
-            build_app_env(public_ip, blog_admin_token, action_auth),
+            build_app_env(public_host, blog_admin_token, action_auth),
             env_remote,
         )
         remote.upload_bytes(build_blog_news_seed(), news_remote, 0o644)
@@ -208,7 +207,7 @@ install -m 600 {env_remote} {APP_ROOT}/shared/app.env
 install -m 644 {news_remote} {APP_ROOT}/shared/blog-news/snapshot.json
 chmod +x {release_remote}/deploy/remote/*.sh
 bash {release_remote}/deploy/remote/install.sh \
-  {APP_ROOT} {release_remote} {ssh['user']} {public_ip}
+  {APP_ROOT} {release_remote} {ssh['user']} {public_host}
 rm -f {archive_remote} {env_remote} {news_remote} {wrapper_remote}
 """
         remote.upload_bytes(wrapper.encode(), wrapper_remote, 0o700)
@@ -222,7 +221,7 @@ rm -f {archive_remote} {env_remote} {news_remote} {wrapper_remote}
         remote.close()
         archive.unlink(missing_ok=True)
 
-    print(f"PUBLIC_URL=https://{public_ip}/quant/")
+    print(f"PUBLIC_URL=https://{public_host}/quant/")
     print(f"BLOG_ADMIN_TOKEN_FILE={STATE_DIR / 'blog-admin.json'}")
     print(f"ACTION_AUTH_FILE={STATE_DIR / 'action-auth.json'}")
     print(f"RELEASE={release_id}")

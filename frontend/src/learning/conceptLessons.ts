@@ -468,7 +468,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
       { title: '策略增量', detail: '样本外收益减成本' },
     ],
     exampleTitle: '备用 Key 不等于备用模型',
-    example: '主 Key 配额不足时用备用 Key 继续请求同一 deepseek-v4-pro；若服务整体不可用，则回退规则分析并在 model 字段明确记录 heuristic-v1。',
+    example: '主 Key 配额不足时用备用 Key 继续请求同一 deepseek-v4-flash；若服务整体不可用，则回退规则分析并在 model 字段明确记录 heuristic-v1。',
     pitfalls: ['只展示正确案例', '模型更大就假设因子更好', '回退结果与 LLM 结果混在一起不标记'],
     practice: ['抽样 20 条事件人工复核', '设计一个“模型升级前后”对比表'],
   },

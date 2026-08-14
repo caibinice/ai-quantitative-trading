@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     llm_api_key_backup: str = ""
     llm_model: str = ""
     llm_thinking_enabled: bool = True
-    llm_reasoning_effort: str = "high"
+    llm_reasoning_effort: str = "max"
     llm_timeout_seconds: int = 45
 
     scheduler_enabled: bool = False
@@ -134,9 +134,9 @@ class Settings(BaseSettings):
         if not self.llm_api_key_backup:
             self.llm_api_key_backup = llm.get("api-key-backup", "")
         if not self.llm_model:
-            self.llm_model = llm.get("model", "deepseek-v4-pro")
+            self.llm_model = llm.get("model", "deepseek-v4-flash")
         if self.llm_reasoning_effort not in {"high", "max"}:
-            self.llm_reasoning_effort = "high"
+            self.llm_reasoning_effort = "max"
 
         tushare = _read_section(path, "tushare")
         if not self.tushare_token:

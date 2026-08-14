@@ -92,7 +92,7 @@ test('learning sources download and automation settings are visible', async ({ p
 
   await page.goto('tasks')
   await expect(page.locator('.automation-panel')).toBeVisible()
-  await expect(page.locator('.automation-model strong')).toHaveText('deepseek-v4-pro')
+  await expect(page.locator('.automation-model strong')).toHaveText('deepseek-v4-flash')
   const interval = Number(await page.locator('.automation-interval input').inputValue())
   expect(interval).toBeGreaterThanOrEqual(1)
   expect(interval).toBeLessThanOrEqual(48)

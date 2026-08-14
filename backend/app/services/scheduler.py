@@ -45,8 +45,21 @@ def scheduled_data_quality() -> None:
         enqueue_task(db, "data_quality", priority=130)
 
 
-def _news_next_run(interval_hours: int) -> datetime:
-    return datetime.now(SHANGHAI) + timedelta(hours=interval_hours)
+def _news_next_run(interval_hours: int, now: datetime | None = None) -> datetime:
+    current = now or datetime.now(SHANGHAI)
+    candidate = current + timedelta(hours=interval_hours)
+    if interval_hours % 6 == 0:
+        # Production defaults to a six-hour cadence. Anchor that cadence to
+        # 00/06/12/18 Beijing time so every DeepSeek batch starts off peak.
+        slot = candidate.replace(minute=0, second=0, microsecond=0)
+        while slot < candidate or slot.hour not in {0, 6, 12, 18}:
+            slot += timedelta(hours=1)
+        return slot
+    if 9 <= candidate.hour < 12:
+        return candidate.replace(hour=12, minute=0, second=0, microsecond=0)
+    if 14 <= candidate.hour < 18:
+        return candidate.replace(hour=18, minute=0, second=0, microsecond=0)
+    return candidate
 
 
 def reschedule_news_analysis(

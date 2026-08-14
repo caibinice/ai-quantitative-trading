@@ -11,10 +11,10 @@ An end-to-end A-share research project for quantitative-finance beginners. It us
 
 > This project is for learning, research, and simulated backtesting only. It has no brokerage integration, never places real orders, and does not constitute investment advice.
 
-**[Live Demo](https://101.132.78.217/quant/) · [Project Story](https://101.132.78.217/articles/ai-quant-system) · [中文说明](./README_CN.md)**
+**[Live Demo](https://caibinice.com/quant/) · [Project Story](https://caibinice.com/articles/ai-quant-system) · [中文说明](./README_CN.md)**
 
 <p align="center">
-  <a href="https://101.132.78.217/quant/">
+  <a href="https://caibinice.com/quant/">
     <img src="docs/images/dashboard.png" alt="AI Quant Research Cockpit dashboard" width="100%">
   </a>
   <br>
@@ -25,12 +25,12 @@ An end-to-end A-share research project for quantitative-finance beginners. It us
 
 | Explainable AI ranking | Strategy laboratory |
 | --- | --- |
-| [![AI factor ranking](docs/images/ai-rankings.png)](https://101.132.78.217/quant/rankings) | [![Strategy laboratory](docs/images/strategy-lab.png)](https://101.132.78.217/quant/strategy) |
+| [![AI factor ranking](docs/images/ai-rankings.png)](https://caibinice.com/quant/rankings) | [![Strategy laboratory](docs/images/strategy-lab.png)](https://caibinice.com/quant/strategy) |
 | Inspect momentum, financial quality, and sentiment separately, together with the scoring date, source, and anomaly warnings. | Configure the universe, factor weights, costs, execution delay, and backtest period from one page. |
 
 | Learning academy | Why this project exists |
 | --- | --- |
-| [![Quant learning academy](docs/images/learning-academy.png)](https://101.132.78.217/quant/learn) | [![Project story](docs/images/project-story.png)](https://101.132.78.217/articles/ai-quant-system) |
+| [![Quant learning academy](docs/images/learning-academy.png)](https://caibinice.com/quant/learn) | [![Project story](docs/images/project-story.png)](https://caibinice.com/articles/ai-quant-system) |
 | Five stages, 11 chapters, and 33 concept pages turn the codebase into a practical quant-learning path. | Read **From an Engineering Loop to Trustworthy Research: My AI Quant System** for the design rationale behind the evidence-first workflow. |
 
 ## What it can do
@@ -80,7 +80,7 @@ flowchart LR
 
 Requirements: PowerShell 7, 64-bit Python 3.11+, Node.js 20+, and an available MySQL database.
 
-The complete production version is currently maintained on the `agent/research-infrastructure` branch. When developing this project independently, clone that branch and place a private `credentials.txt` in the repository root. The sibling `ai-blog` project is not required.
+The complete production version is currently maintained on the `main` branch. When developing this project independently, clone that branch and place a private `credentials.txt` in the repository root. The sibling `ai-blog` project is not required.
 
 ```powershell
 # 1. Install dependencies and seed demo data.
@@ -139,7 +139,7 @@ Create a private, untracked `credentials.txt` based on `credentials.example.txt`
 
 ```ini
 [remote.ssh]
-host=public-server-ip
+host=caibinice.com
 port=22
 user=regular-ssh-user
 password=ssh-password
@@ -160,11 +160,11 @@ The deployment script:
 2. packages only source code and `frontend/dist`, excluding `.env`, `credentials.txt`, and `.deploy`;
 3. installs native Python 3.11 and Nginx, creates a low-priority 1 GB OOM-protection swap file, and isolates the app under `/quant`;
 4. writes systemd API and worker services and connects to the same remote MySQL database defined in `credentials.txt`;
-5. obtains a trusted short-lived Let’s Encrypt certificate for the public IP and redirects port 80 to HTTPS;
-6. checks certificate renewal twice a day and hot-reloads Nginx after success;
+5. obtains a trusted Let’s Encrypt certificate for `caibinice.com` and `www.caibinice.com`, then redirects port 80 to HTTPS;
+6. checks certificate renewal at 03:17 and 12:17 Beijing time and hot-reloads Nginx after success;
 7. runs an API health check and automatically restores the previous release on failure.
 
-Let’s Encrypt IP certificates are valid for approximately six days, so keep `ai-quant-cert-renew.timer` enabled. The operation password and short-lived signing key stay in the untracked local file:
+Keep `ai-quant-cert-renew.timer` enabled. The operation password and short-lived signing key stay in the untracked local file:
 
 ```text
 .deploy/action-auth.json
@@ -182,7 +182,7 @@ pwsh -File scripts/github-push.ps1 `
 
 The GitHub helper reads only `[github]` from this repository’s `credentials.txt`. It uses the `127.0.0.1:20808` proxy and token only for the current process and does not change the remote URL or global Git configuration.
 
-Open `https://public-server-ip/quant/` to access market data, research results, and courses. Write actions such as collection, AI analysis, scoring, backtesting, task management, walk-forward validation, quality checks, and automation configuration request an operation password. FastAPI validates it and issues a 30-minute token; the password is never written to frontend storage. APScheduler and the worker call service-layer functions directly, so background schedules do not require browser authentication. The API listens only on `127.0.0.1:8000` on the server.
+Open `https://caibinice.com/quant/` to access market data, research results, and courses. Write actions such as collection, AI analysis, scoring, backtesting, task management, walk-forward validation, quality checks, and automation configuration request an operation password. FastAPI validates it and issues a 30-minute token; the password is never written to frontend storage. APScheduler and the worker call service-layer functions directly, so background schedules do not require browser authentication. The API listens only on `127.0.0.1:8000` on the server.
 
 Production builds disable source maps, split React and ECharts into `vendor-*` chunks, and conservatively obfuscate only first-party business chunks. Obfuscation raises the cost of casual reading but does not replace backend authorization.
 
@@ -215,9 +215,9 @@ LLM_ENABLED=true
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=your-key
 LLM_API_KEY_BACKUP=your-backup-key
-LLM_MODEL=deepseek-v4-pro
+LLM_MODEL=deepseek-v4-flash
 LLM_THINKING_ENABLED=true
-LLM_REASONING_EFFORT=high
+LLM_REASONING_EFFORT=max
 BLOG_ADMIN_TOKEN=replace-with-at-least-32-random-bytes
 ```
 
@@ -236,7 +236,7 @@ charset=utf8mb4
 base-url=https://api.deepseek.com
 api-key=your-key
 api-key-backup=your-backup-key
-model=deepseek-v4-pro
+model=deepseek-v4-flash
 
 [tushare]
 token=your-tushare-token
@@ -312,7 +312,7 @@ Each event produces a structured record:
 }
 ```
 
-The model is instructed to use only the supplied text, add no external facts, and provide no trading recommendation. The default is `deepseek-v4-pro` Thinking Mode with `thinking.type=enabled` and `reasoning_effort=high`. Quota, authentication, timeout, and server failures on the primary key trigger the backup key; deterministic dictionary rules are used only after both keys fail. The database stores the actual model name so a fallback result is never presented as LLM output. See the [DeepSeek Thinking Mode documentation](https://api-docs.deepseek.com/guides/thinking_mode).
+The model is instructed to use only the supplied text, add no external facts, and provide no trading recommendation. The default is `deepseek-v4-flash` Thinking Mode with `thinking.type=enabled` and `reasoning_effort=max`. Quota, authentication, timeout, and server failures on the primary key trigger the backup key; deterministic dictionary rules are used only after both keys fail. The database stores the actual model name so a fallback result is never presented as LLM output. See the [DeepSeek Thinking Mode documentation](https://api-docs.deepseek.com/guides/thinking_mode).
 
 ### 2. Explainable stock ranking
 
@@ -434,7 +434,7 @@ ai-quantitative-trading/
 - Free financial-report endpoints fetch the full market by reporting period before filtering the universe. Queue these jobs and limit the number of historical quarters.
 - The remote MariaDB profile uses ordinary row locks for job claiming. It defaults to one worker; additional workers wait safely, but throughput does not scale linearly.
 - The site is public, while sensitive write actions use short-lived backend tokens. Multi-user collaboration would require accounts, RBAC, and a stronger audit model.
-- Public-IP certificates are short-lived and depend on a systemd renewal timer. Changing the public IP requires redeployment and a new certificate.
+- Domain certificates depend on the systemd renewal timer. Changing the domain or DNS requires redeployment and a new certificate.
 - Synthetic demo data validates the interface and workflow only; it must not be used to judge strategy performance.
 - Sentiment models make mistakes. Sample-review outputs and retain model versions, prompts, and source URLs.
 

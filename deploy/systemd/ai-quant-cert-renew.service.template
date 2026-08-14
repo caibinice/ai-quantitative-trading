@@ -1,9 +1,9 @@
 [Unit]
-Description=Renew short-lived Let's Encrypt IP certificate
+Description=Renew Let's Encrypt domain certificate
 After=network-online.target nginx.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=__APP_ROOT__/shared/certbot/bin/certbot renew --quiet --config-dir __APP_ROOT__/shared/letsencrypt --work-dir __APP_ROOT__/shared/certbot-work --logs-dir __APP_ROOT__/shared/certbot-logs
-ExecStartPost=/usr/sbin/nginx -s reload
+ExecStart=__APP_ROOT__/shared/certbot/bin/certbot renew --config-dir __APP_ROOT__/shared/letsencrypt --work-dir __APP_ROOT__/shared/certbot-work --logs-dir __APP_ROOT__/shared/certbot-logs --quiet
+ExecStartPost=/usr/bin/systemctl reload nginx

@@ -9,20 +9,24 @@ server {
     }
 
     location / {
-        return 301 https://$host$request_uri;
+        return 301 https://caibinice.com$request_uri;
     }
 }
 
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name __PUBLIC_IP__;
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
+    server_name caibinice.com www.caibinice.com;
 
-    ssl_certificate __APP_ROOT__/shared/letsencrypt/live/ai-quant-ip/fullchain.pem;
-    ssl_certificate_key __APP_ROOT__/shared/letsencrypt/live/ai-quant-ip/privkey.pem;
+    ssl_certificate __APP_ROOT__/shared/letsencrypt/live/__PUBLIC_DOMAIN__/fullchain.pem;
+    ssl_certificate_key __APP_ROOT__/shared/letsencrypt/live/__PUBLIC_DOMAIN__/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_session_cache shared:TLS:5m;
     ssl_session_timeout 10m;
+
+    if ($host = www.caibinice.com) {
+        return 301 https://caibinice.com$request_uri;
+    }
 
     add_header Strict-Transport-Security "max-age=15552000" always;
     add_header X-Content-Type-Options nosniff always;

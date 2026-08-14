@@ -26,6 +26,14 @@ if ($BuildOnly) {
     return
 }
 
+$preflightUrl = 'http://caibinice.com/.well-known/acme-challenge/preflight'
+$preflightHeaders = (& curl.exe --noproxy '*' --silent --show-error `
+    --max-time 20 --head $preflightUrl 2>&1) -join "`n"
+if ($LASTEXITCODE -ne 0 -or
+    $preflightHeaders -notmatch '(?im)^Server:\s*nginx(?:/|\s|$)') {
+    throw 'caibinice.com 公网入口尚未到达本机 Nginx；请先完成阿里云 ICP 备案放行，再重跑部署。'
+}
+
 $env:PYTHONUTF8 = '1'
 & $Python (Join-Path $PSScriptRoot 'remote\deploy.py')
 if ($LASTEXITCODE -ne 0) { throw '远程发布失败。' }

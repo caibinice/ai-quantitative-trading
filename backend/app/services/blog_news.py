@@ -177,7 +177,7 @@ class BlogNewsCache:
         try:
             response = await client.get(
                 url,
-                headers={"User-Agent": "Fish-AI-Blog/1.0 (+https://101.132.78.217/)"},
+                headers={"User-Agent": "Fish-AI-Blog/1.0 (+https://caibinice.com/)"},
             )
             response.raise_for_status()
             return parse_feed(response.text, source)

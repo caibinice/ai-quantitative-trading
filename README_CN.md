@@ -11,10 +11,10 @@
 
 > 仅用于学习、研究和模拟回测。系统不包含券商接口，不会执行真实交易，也不构成投资建议。
 
-**[在线体验](https://101.132.78.217/quant/) · [项目设计文章](https://101.132.78.217/articles/ai-quant-system) · [English README](./README.md)**
+**[在线体验](https://caibinice.com/quant/) · [项目设计文章](https://caibinice.com/articles/ai-quant-system) · [English README](./README.md)**
 
 <p align="center">
-  <a href="https://101.132.78.217/quant/">
+  <a href="https://caibinice.com/quant/">
     <img src="docs/images/dashboard.png" alt="AI 量化研究舱研究总览" width="100%">
   </a>
   <br>
@@ -25,12 +25,12 @@
 
 | 可解释 AI 选股 | 策略实验室 |
 | --- | --- |
-| [![AI 选股排名](docs/images/ai-rankings.png)](https://101.132.78.217/quant/rankings) | [![策略实验室](docs/images/strategy-lab.png)](https://101.132.78.217/quant/strategy) |
+| [![AI 选股排名](docs/images/ai-rankings.png)](https://caibinice.com/quant/rankings) | [![策略实验室](docs/images/strategy-lab.png)](https://caibinice.com/quant/strategy) |
 | 行情动量、财务质量和舆情情绪拆分展示，保留评分日期、来源和异常提示。 | 在同一页面配置股票池、因子权重、成本、执行延迟与回测区间。 |
 
 | 学习学院 | 项目设计文章 |
 | --- | --- |
-| [![学习学院](docs/images/learning-academy.png)](https://101.132.78.217/quant/learn) | [![项目设计文章](docs/images/project-story.png)](https://101.132.78.217/articles/ai-quant-system) |
+| [![学习学院](docs/images/learning-academy.png)](https://caibinice.com/quant/learn) | [![项目设计文章](docs/images/project-story.png)](https://caibinice.com/articles/ai-quant-system) |
 | 五阶段、11 章、33 个知识详情，把项目源码变成一条可操作的量化学习路线。 | 阅读《从工程闭环到可信研究：我的 AI 量化系统》，了解为什么项目优先构建可复查证据链。 |
 
 ## 现在能做什么
@@ -80,7 +80,7 @@ flowchart LR
 
 要求：PowerShell 7、64 位 Python 3.11+、Node.js 20+，以及一个可用的 MySQL 数据库。
 
-完整生产版本当前固定使用 `agent/research-infrastructure` 分支。单独开发
+完整生产版本当前固定使用 `main` 分支。单独开发
 本项目时只需克隆该分支，并把私有 `credentials.txt` 放在本仓库根目录；
 不要求同时下载 `ai-blog` 或其他展示项目。
 
@@ -142,7 +142,7 @@ Demo 也可以在项目根目录直接运行：
 
 ```ini
 [remote.ssh]
-host=服务器公网 IP
+host=caibinice.com
 port=22
 user=普通 SSH 用户
 password=SSH 密码
@@ -166,12 +166,11 @@ Remove-Item Env:AI_PLATFORM_ACTION_PASSWORD
 2. 只打包源码与 `frontend/dist`，不会上传 `.env`、`credentials.txt` 或 `.deploy`；
 3. 在服务器安装原生 Python 3.11 与 Nginx，创建 1GB 低优先级防 OOM swap，并把应用隔离在 `/quant`；
 4. 写入 systemd API/Worker 服务并连接 `credentials.txt` 中的同一个远程 MySQL；
-5. 为公网 IP 申请 Let’s Encrypt 受信任短期证书，80 自动跳转 443；
-6. 每天两次检查证书续期，成功后热加载 Nginx；
+5. 为 `caibinice.com` 和 `www.caibinice.com` 申请 Let’s Encrypt 证书，80 自动跳转 443；
+6. 每天在北京时间 03:17 和 12:17 检查证书续期，成功后热加载 Nginx；
 7. 执行 API 健康检查；失败时自动恢复上一个 release。
 
-Let’s Encrypt 的 IP 证书有效期约 6 天，因此不要停用
-`ai-quant-cert-renew.timer` 太久。操作口令与短期签名密钥保存在本机、
+不要停用 `ai-quant-cert-renew.timer` 太久。操作口令与短期签名密钥保存在本机、
 不提交 Git 的：
 
 ```text
@@ -191,7 +190,7 @@ pwsh -File scripts/github-push.ps1 `
 GitHub 脚本只读取本仓库 `credentials.txt` 的 `[github]`，并只在当前进程
 使用 `127.0.0.1:20808` 代理和 token，不修改 remote URL 或全局 Git 配置。
 
-浏览器访问 `https://服务器公网IP/quant/` 可直接查看行情、研究结果和
+浏览器访问 `https://caibinice.com/quant/` 可直接查看行情、研究结果和
 课程。采集、AI 分析、评分、回测、任务、Walk-forward、数据质量和自动化
 配置等写操作会弹出密码框，由 FastAPI 验证后签发 30 分钟令牌；密码不写
 入前端存储。APScheduler 和 Worker 直接调用服务层，不经过网页接口，因此
@@ -238,9 +237,9 @@ LLM_ENABLED=true
 LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=your-key
 LLM_API_KEY_BACKUP=your-backup-key
-LLM_MODEL=deepseek-v4-pro
+LLM_MODEL=deepseek-v4-flash
 LLM_THINKING_ENABLED=true
-LLM_REASONING_EFFORT=high
+LLM_REASONING_EFFORT=max
 BLOG_ADMIN_TOKEN=replace-with-at-least-32-random-bytes
 ```
 
@@ -259,7 +258,7 @@ charset=utf8mb4
 base-url=https://api.deepseek.com
 api-key=your-key
 api-key-backup=your-backup-key
-model=deepseek-v4-pro
+model=deepseek-v4-flash
 
 [tushare]
 token=your-tushare-token
@@ -353,7 +352,7 @@ AKShare 是开源接口库，但它聚合的源站接口可能变更、限流或
 }
 ```
 
-模型提示词要求只基于输入文本、不补充外部事实、不提供买卖建议。默认使用 `deepseek-v4-pro` Thinking Mode（`thinking.type=enabled`、`reasoning_effort=high`）；主 Key 在配额不足、鉴权失败、超时或服务端不可用时自动尝试备用 Key，两者均失败才使用词典规则。数据库会记录实际模型名，避免把降级结果误认为大模型输出。参数用法参见 [DeepSeek Thinking Mode 官方文档](https://api-docs.deepseek.com/guides/thinking_mode)。
+模型提示词要求只基于输入文本、不补充外部事实、不提供买卖建议。默认使用 `deepseek-v4-flash` Thinking Mode（`thinking.type=enabled`、`reasoning_effort=max`）；主 Key 在配额不足、鉴权失败、超时或服务端不可用时自动尝试备用 Key，两者均失败才使用词典规则。数据库会记录实际模型名，避免把降级结果误认为大模型输出。参数用法参见 [DeepSeek Thinking Mode 官方文档](https://api-docs.deepseek.com/guides/thinking_mode)。
 
 ### 2. AI 选股排名
 
@@ -473,7 +472,7 @@ ai-quantitative-trading/
 - 免费业绩报表接口按报告期抓取全市场后过滤股票池，建议放入队列并控制回溯季度数量。
 - 当前远程 MariaDB 使用普通行锁认领任务；默认单 Worker，增加多个 Worker 会安全串行等待但吞吐不会线性提升。
 - 页面公开，敏感网页操作使用后端短期令牌；若未来开放多人协作，需要升级为账号、RBAC 和审计系统。
-- 公网 IP 证书有效期很短，依赖 systemd timer 自动续期；更换公网 IP 后需要重新发布并签发证书。
+- 域名证书依赖 systemd timer 自动续期；更换域名或 DNS 后需要重新发布并签发证书。
 - 合成演示数据只用于验证界面和流程，绝不能用于评价策略有效性。
 - 情绪模型会犯错；应抽样复核，并保存模型版本、提示词和原文链接。
 

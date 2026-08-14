@@ -4,7 +4,7 @@ set -euo pipefail
 APP_ROOT="${1:?app root is required}"
 RELEASE_DIR="${2:?release dir is required}"
 APP_USER="${3:?app user is required}"
-PUBLIC_IP="${4:?public ip is required}"
+PUBLIC_DOMAIN="${4:?public domain is required}"
 SHARED="$APP_ROOT/shared"
 
 echo "[1/8] Installing lightweight native runtime"
@@ -26,12 +26,11 @@ fi
 "$SHARED/venv/bin/python" -m pip install --disable-pip-version-check --upgrade pip >/dev/null
 "$SHARED/venv/bin/python" -m pip install --disable-pip-version-check \
   -r "$RELEASE_DIR/backend/requirements.txt" >/dev/null
-
 if [[ ! -x "$SHARED/certbot/bin/certbot" ]]; then
   python3.11 -m venv "$SHARED/certbot"
 fi
-"$SHARED/certbot/bin/python" -m pip install --disable-pip-version-check \
-  --upgrade 'certbot==5.4.0' >/dev/null
+"$SHARED/certbot/bin/python" -m pip install --disable-pip-version-check --upgrade pip >/dev/null
+"$SHARED/certbot/bin/python" -m pip install --disable-pip-version-check certbot==5.4.0 >/dev/null
 
 echo "[3/8] Activating release"
 previous_release="$(readlink -f "$APP_ROOT/current" 2>/dev/null || true)"
@@ -50,7 +49,7 @@ render() {
   sed \
     -e "s|__APP_ROOT__|$APP_ROOT|g" \
     -e "s|__APP_USER__|$APP_USER|g" \
-    -e "s|__PUBLIC_IP__|$PUBLIC_IP|g" \
+    -e "s|__PUBLIC_DOMAIN__|$PUBLIC_DOMAIN|g" \
     "$1" > "$2"
 }
 
@@ -93,18 +92,18 @@ if command -v getenforce >/dev/null && [[ "$(getenforce)" == "Enforcing" ]]; the
   chcon -R -t httpd_sys_content_t "$RELEASE_DIR/frontend/dist" "$SHARED/acme"
 fi
 
-echo "[6/8] Requesting or reusing trusted IP certificate"
-certificate="$SHARED/letsencrypt/live/ai-quant-ip/fullchain.pem"
+echo "[6/8] Requesting or reusing trusted domain certificate"
+certificate="$SHARED/letsencrypt/live/$PUBLIC_DOMAIN/fullchain.pem"
 if [[ ! -s "$certificate" ]]; then
   "$SHARED/certbot/bin/certbot" certonly \
     --non-interactive \
     --agree-tos \
     --register-unsafely-without-email \
-    --preferred-profile shortlived \
     --webroot \
     --webroot-path "$SHARED/acme" \
-    --ip-address "$PUBLIC_IP" \
-    --cert-name ai-quant-ip \
+    -d "$PUBLIC_DOMAIN" \
+    -d "www.$PUBLIC_DOMAIN" \
+    --cert-name "$PUBLIC_DOMAIN" \
     --config-dir "$SHARED/letsencrypt" \
     --work-dir "$SHARED/certbot-work" \
     --logs-dir "$SHARED/certbot-logs"

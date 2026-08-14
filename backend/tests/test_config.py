@@ -13,7 +13,7 @@ def test_default_watchlist_contains_fifteen_diversified_stocks() -> None:
     assert len(set(settings.watchlist)) == 15
     assert {"000001", "300750", "600519", "601899"} <= set(settings.watchlist)
     assert set(settings.watchlist) == set(DEFAULT_STOCK_NAMES)
-    assert settings.llm_model == "deepseek-v4-pro"
+    assert settings.llm_model == "deepseek-v4-flash"
 
 
 def test_tushare_token_supports_project_and_shared_scoped_credentials(tmp_path) -> None:
