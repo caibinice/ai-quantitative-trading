@@ -128,9 +128,9 @@ export const conceptLessons: Record<string, ConceptLesson> = {
     practice: ['写出 A 股与链上资产各三个数据字段', '找出两类市场中交易成本含义的差异'],
   },
   'project-tour:0': {
-    mentalModel: '把当前代码库映射成你熟悉的分层 Web 系统，只是领域对象从订单、用户换成行情、因子和实验。',
+    mentalModel: '量化系统遵循严谨的分层架构设计，领域核心聚焦于行情时序、点时财务、舆情因子与回测实验。',
     deepDive: [
-      'FastAPI 的 router 类似 Spring Controller，Pydantic Schema 类似带运行时校验的 DTO，SQLAlchemy Model 类似 JPA Entity，services 承载领域逻辑。React 页面通过统一 api 函数调用后端，不直接接触 MySQL。',
+      'FastAPI 的 router 承担接口路由与参数分发，Pydantic Schema 负责入参强类型校验，SQLAlchemy Model 负责关系数据库映射，services 封装量化业务领域逻辑。React 页面通过统一 api 函数与后端交互，不直接接触底层数据库。',
       '不同于普通 CRUD，量化系统有大量长耗时和可重复计算。API 只创建任务，Worker 从 MySQL 队列认领后执行，进度和结果持续写回数据库。这使网页刷新、服务重启或跨设备访问都不会丢失任务状态。',
     ],
     visualTitle: '从浏览器到研究结果',
@@ -141,8 +141,8 @@ export const conceptLessons: Record<string, ConceptLesson> = {
       { title: 'Worker', detail: '运行采集、模型与回测服务' },
       { title: '结果表', detail: '页面读取并可视化' },
     ],
-    exampleTitle: 'Java 经验如何复用',
-    example: '你熟悉的 Controller → Service → Repository 分层仍然成立；新增的重点是 pandas 时间序列语义、任务幂等和研究结果可复现。',
+    exampleTitle: '通用软件工程经验在量化系统中的映射',
+    example: '经典的分层设计（Router → Service → Repository）在量化系统中依然成立；重点在于深入理解 pandas 时间序列因果语义、异步任务幂等性与实验可复现性。',
     pitfalls: ['在 React 中实现回测核心逻辑', '让 HTTP 请求等待几分钟', '路由层直接堆积数据处理代码'],
     practice: ['从 App.tsx 找到任务中心对应的后端 router', '画出一次“运行回测”的调用链'],
   },
@@ -150,7 +150,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
     mentalModel: '任务是一份可审计的工作订单：payload 是输入快照，status 是状态机，result/error 是执行证据。',
     deepDive: [
       '创建任务时只写 queued；Worker 使用数据库锁认领最早且优先级最高的任务，改成 running 后再执行。成功写 result，失败记录 error；达到最大重试次数前可以重新排队。',
-      '任务队列不是为了追求极致吞吐，而是让 2 核 2G 的教学服务器稳定工作。单 Worker 串行执行可避免同时跑数据采集、模型分析和回测造成内存峰值，也更容易追查失败。',
+      '任务队列旨在保障系统在有限资源下稳定运行。单 Worker 串行执行可避免同时跑数据采集、模型分析和回测造成内存峰值，也更容易追查失败。',
     ],
     visualTitle: '研究任务状态机',
     flow: [
@@ -184,7 +184,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
     practice: ['为 aq_daily_prices 找出业务唯一键', '解释 aq_factor_scores 为什么还需要 score_date'],
   },
   'python-bridge:0': {
-    mentalModel: 'Python 的短小来自运行时协议与引用语义，不是“没有类型”；从 Java 迁移时最应防的是默认共享状态和隐式真值。',
+    mentalModel: 'Python 凭借动态引用语义、迭代协议与丰富的科学计算生态实现高效表达；开发金融代码时需重点防范可变默认对象的共享状态与隐式真值陷阱。',
     deepDive: [
       '变量保存对象引用，不声明固定类型。list、dict 等可变对象被多个变量引用时，任何一处修改都会被看见；函数默认参数只在定义时计算一次，因此不能用 [] 作为会被修改的默认值。',
       '类型提示帮助 IDE、检查器和读者，但运行时通常不会自动阻止错误类型。项目用 Pydantic 在 API 边界做强校验，在内部用类型提示和测试维持契约。',
@@ -203,7 +203,7 @@ export const conceptLessons: Record<string, ConceptLesson> = {
     practice: ['运行 learning/examples/01_python_bridge.py', '用 id() 观察两个变量是否引用同一个 list'],
   },
   'python-bridge:1': {
-    mentalModel: 'Pythonic 不是把代码压成一行，而是使用语言协议表达意图，并把大规模数值循环交给 NumPy/pandas。',
+    mentalModel: '编写 Pythonic 高质量代码的核心在于合理运用语言协议与推导式，并将大规模时序数值计算委托给底层向量化引擎。',
     deepDive: [
       'enumerate 同时给索引和值，zip 对齐多组迭代对象，推导式适合简单映射和过滤，dataclass 适合承载有明确字段的数据。复杂业务分支仍应写成命名清楚的函数。',
       'with 语句通过上下文管理器保证资源释放。数据库 Session、文件、锁和 HTTP Client 都适合用它管理，即使中途抛异常也会执行退出逻辑。',
@@ -219,10 +219,10 @@ export const conceptLessons: Record<string, ConceptLesson> = {
     example: 'list(dict.fromkeys(...)) 可以在保持顺序的同时去重；但如果逻辑再增加市场映射和错误报告，就应拆成清楚的 normalize_symbols 函数。',
     code: `symbols = list(dict.fromkeys(\n    symbol.strip() for symbol in raw_symbols if symbol.strip()\n))`,
     pitfalls: ['为了“一行代码”牺牲可读性', '对 DataFrame 使用逐行 for 循环', '忘记关闭数据库或文件资源'],
-    practice: ['把一个 Java for 循环改写为 enumerate', '比较列表推导式与生成器在内存上的差异'],
+    practice: ['使用 enumerate 优雅替代下标索引循环', '对比列表推导式与生成器在处理大规模序列时的内存占用差异'],
   },
   'python-bridge:2': {
-    mentalModel: 'Traceback 是一条调用路径，不是噪声；测试则是把已经理解的错误变成以后不会复发的契约。',
+    mentalModel: 'Traceback 堆栈提供了清晰的调用溯源链路；自动化测试是将业务逻辑转化为长期有效的回归防护契约。',
     deepDive: [
       '先读 traceback 最后一行确定异常类型和消息，再向上找到第一个属于本项目的文件与行号。ValueError 往往是值不合法，TypeError 是类型或调用方式不匹配，KeyError/IndexError 是访问不存在的键或位置。',
       'pytest 测试应覆盖边界和金融语义，例如信号必须 shift(1)、手续费只在换仓时扣除、最大回撤从历史峰值计算。它们比“函数能运行”更接近真实正确性。',

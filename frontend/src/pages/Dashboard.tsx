@@ -78,7 +78,7 @@ export function Dashboard() {
     <>
       <PageHeader
         eyebrow="Research overview"
-        title="今天，从数据而不是感觉出发"
+        title="量化研究与策略总览"
         description="把行情、财务、舆情和回测汇总到一个可追溯的研究工作台。"
         actions={<Link className="button primary" to="/strategy">开始一次策略实验 <ArrowUpRight size={16} /></Link>}
       />

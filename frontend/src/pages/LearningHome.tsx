@@ -54,9 +54,9 @@ export function LearningHome() {
   return (
     <>
       <PageHeader
-        eyebrow="Quant learning academy"
-        title="从工程师到量化研究者"
-        description={`为有 Java、JavaScript 和科研计算背景的开发者设计：五个阶段、${learningChapters.length} 个章节，先补股票与 K 线常识，再进入 Python、舆情因子、可信回测和毕业研究。`}
+        eyebrow="Developer quant academy"
+        title="软件开发者的量化交易实战手册"
+        description={`专为具备编程思维的软件开发者设计：五个阶段、${learningChapters.length} 个循序渐进章节。从市场交易常识与时间序列清洗，到因子构建、大模型舆情分析、样本外 Walk-forward 验证与量化工程体系。`}
         actions={(
           <>
             <button className="button" onClick={handleReset}>
@@ -71,18 +71,17 @@ export function LearningHome() {
 
       <section className="learning-hero panel">
         <div className="learning-hero-copy">
-          <span className="section-kicker">YOUR STARTING POINT</span>
-          <h2>你不是编程小白，需要补的是科学 Python 与量化研究范式</h2>
+          <span className="section-kicker">ENGINEERING TO QUANT</span>
+          <h2>发挥工程优势，由浅入深构建可信量化研究体系</h2>
           <p>
-            九年 Java / JS 经验让你已经具备架构、测试和工程能力；物理海洋学训练则对应时间序列、
-            数值计算和科研方法。本路线会快速略过通用编程常识，重点解决 pandas 对齐、信息时点、
-            回测偏差、舆情结构化和样本外验证。
+            软件开发者具备代码逻辑、测试思维与系统架构能力，而量化交易的核心正是把投资假设转化为可复现、可证伪的软件实验。
+            本手册抛弃玄学口诀与模糊预测，专注解决真实市场数据对齐、信息时点因果性、回测交易成本、大模型舆情结构化与滚动样本外验证。
           </p>
           <div className="persona-tags">
-            <span>Java → FastAPI / SQLAlchemy</span>
-            <span>JavaScript → React 已熟悉</span>
-            <span>MATLAB → NumPy / pandas</span>
-            <span>科研训练 → 可证伪实验</span>
+            <span>通用编程 → 科学计算 Python</span>
+            <span>数据结构 → pandas 时间序列</span>
+            <span>业务逻辑 → 因子与信号工程</span>
+            <span>系统测试 → 杜绝未来函数与过拟合</span>
           </div>
         </div>
         <div className="learning-progress-orbit">

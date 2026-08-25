@@ -61,7 +61,7 @@ export function Rankings() {
 
   return (
     <>
-      <PageHeader eyebrow="AI factor ranking" title="可解释的 AI 选股排名" description="不是让模型猜股价，而是把动量、财务质量和已发布舆情转换为可检查的分项评分。" actions={<button className="button primary" onClick={recompute} disabled={running}><RefreshCcw size={16} className={running ? 'spin' : ''} />{running ? '计算中' : '重新评分'}</button>} />
+      <PageHeader eyebrow="AI factor ranking" title="可解释的 AI 选股排名" description="基于价格动量、财务质量和已发布舆情等多维因子，计算透明可追溯的综合量化评分。" actions={<button className="button primary" onClick={recompute} disabled={running}><RefreshCcw size={16} className={running ? 'spin' : ''} />{running ? '计算中' : '重新评分'}</button>} />
       {error && <div className="inline-alert">{error}</div>}
       <div className="info-banner"><Info size={18} /><span>评分日：{scoreDate ?? '尚未生成'}。总分仅用于研究排序，不能直接解释为预期收益或买入概率。</span></div>
       {hasBlockedData && <div className="inline-alert"><AlertTriangle size={16} />部分股票存在异常价格跳变，系统已把相关动量回退为中性，请先查看数据治理告警。</div>}
@@ -76,7 +76,7 @@ export function Rankings() {
             <span><CalendarRange size={13} /> 数据截至 {leaderData?.price_latest_date ?? '未知'}</span>
           </div>
           <p>
-            排名是三个历史证据的加权结果，不是“下一交易日上涨概率”。当前首名的行情、财务、舆情分分别为
+            当前首名的多因子加权分由行情、财务与舆情三部分构成，得分分别为
             {' '}{leader.momentum_score.toFixed(1)}、{leader.quality_score.toFixed(1)}、{leader.sentiment_score.toFixed(1)}。
           </p>
           <div className="ranking-proof-grid">

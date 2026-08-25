@@ -88,7 +88,7 @@ export function Strategy() {
   const p = config.parameters
   return (
     <>
-      <PageHeader eyebrow="Strategy laboratory" title="把研究假设变成可配置实验" description="调整因子、成本和股票池；每次回测都保存参数与资金曲线，避免“只记住最好结果”。" actions={<button className="button primary" onClick={() => execute('save')} disabled={!!activeAction}><Save size={16} />{activeAction === 'save' ? '保存中' : '保存配置'}</button>} />
+      <PageHeader eyebrow="Strategy laboratory" title="把研究假设变成可配置实验" description="调整因子权重、交易成本与股票池；系统记录每次实验参数与资金曲线，支持科学复现与对比。" actions={<button className="button primary" onClick={() => execute('save')} disabled={!!activeAction}><Save size={16} />{activeAction === 'save' ? '保存中' : '保存配置'}</button>} />
       {(error || message) && <div className={`inline-alert ${error ? '' : 'success'}`}>{error || message}</div>}
       <section className="strategy-layout">
         <div className="strategy-column">

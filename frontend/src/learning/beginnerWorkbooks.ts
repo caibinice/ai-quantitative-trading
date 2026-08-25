@@ -111,7 +111,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'quant-map': {
-    beginnerNote: '量化的第一产物不是买卖信号，而是一份别人可以重复、也可以否定的实验说明。你要练的是把模糊直觉拆成数据、规则和失败条件。',
+    beginnerNote: '量化研究的核心产出是一份具备可重复性与可证伪性的规范实验记录。学习重点在于将投资直觉拆解为明确的数据范围、计算规则与可检验的假设。',
     plainWords: [
       { term: '假设', translation: '一个可以被数据判错的“如果……那么……”句子。', projectUse: '策略配置把窗口、门槛和股票池固定下来。' },
       { term: '因子', translation: '给每只股票计算的可比较特征。', projectUse: '动量、财务质量、舆情都是分项因子。' },
@@ -121,7 +121,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
     ],
     concepts: [
       {
-        focus: '把“我觉得会涨”改写成能失败的实验，先定义股票池、日期、规则、成本和判定线。',
+        focus: '把主观观点改写成可证伪的实验方案，明确限定股票池、时间区间、调仓规则、成本与判定基准。',
         pitfallDetails: [
           { why: '一笔交易可能只是运气、市场普涨或承担了更大风险，不能估计规则的稳定性。', correction: '看多次独立样本、基准、回撤、成本和样本外结果。', selfCheck: '换一个起点或市场阶段，结论是否仍成立？' },
           { why: '知道答案后写原因会产生后见偏差，任何曲线都能编出故事。', correction: '运行前把假设、参数范围和失败线写入研究日志。', selfCheck: 'Git 或实验记录能证明规则早于结果存在吗？' },
@@ -131,7 +131,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
         challenge: '把同一假设的成本提高五倍，预先写下你预计哪类策略最先失效。',
       },
       {
-        focus: '分清 AI 辅助写代码、AI 抽取文本和机器学习预测，越接近交易决策越需要验证。',
+        focus: '明确区分 AI 辅助编码、非结构化文本抽取与机器学习预测，越靠近交易决策层越需严谨验证。',
         pitfallDetails: [
           { why: '模型自报 80% confidence 只是生成字段，不等于历史上 80% 判断正确。', correction: '用人工标注集按置信度分桶，检查真实准确率与覆盖率。', selfCheck: '0.8 置信度的 100 条样本实际对了多少？' },
           { why: '直接问“买不买”会混入模型常识、过时信息和不可审计的主观判断。', correction: '只让模型对给定文本做固定 Schema 的标签、分数、摘要和理由。', selfCheck: '输出是否能逐字段追溯到输入原文？' },
@@ -141,7 +141,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
         challenge: '设计一个不用 LLM 也能运行的中性回退规则，并说明它会损失什么信息。',
       },
       {
-        focus: 'Web3 是资产与基础设施范畴，量化是研究方法；两者可组合但互不等价。',
+        focus: 'Web3 聚焦于链上资产与去中心化基础设施，量化是通用数据研究方法，两者各具独立范畴。',
         pitfallDetails: [
           { why: '技术叠加不会自动保证数据真实、合约安全或策略有效。', correction: '分别审计链上来源、模型输出和交易规则。', selfCheck: '每个“可信”结论由哪项独立证据支持？' },
           { why: '链上市场连续运行，A 股有交易日、停牌和集合竞价，时间切分方法不同。', correction: '先定义市场日历、时区和可交易时点。', selfCheck: '周日新闻对 A 股最早何时可以形成可执行仓位？' },
@@ -173,19 +173,19 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
       verification: ['能解释为何 random_rule 样本内最好却不应采用', '失败条件在查看新结果前写好', '能说出成本和基准各解决什么偏差'],
     },
     readings: [
-      { title: 'CS 7646: Machine Learning for Trading', provider: 'Georgia Tech', url: 'https://omscs.gatech.edu/cs-7646-machine-learning-trading', takeaway: '课程把金融数据、市场模拟与机器学习串成完整研究链，而不是只教模型。', kind: '官方教程' },
+      { title: 'CS 7646: Machine Learning for Trading', provider: 'Georgia Tech', url: 'https://omscs.gatech.edu/cs-7646-machine-learning-trading', takeaway: '佐治亚理工经典课程，系统讲解金融时间序列、交易撮合模拟与机器学习策略的全流程实现。', kind: '官方教程' },
       { title: 'Backtesting Bias: Feels Good, Until You Blow Up', provider: 'Robot Wealth / Kris Longmore', url: 'https://robotwealth.com/backtesting-bias-feels-good-until-you-blow-up/', takeaway: '从业经验强调简单、可解释、面向稳健性的规则，并把样本内成绩视为偏乐观。', kind: '从业者经验' },
     ],
   },
 
   'project-tour': {
-    beginnerNote: '把本项目当成你熟悉的 Java/JS 分层系统：页面提交命令，API 校验并入队，Worker 干重活，MySQL 保存证据。先学会追踪一条任务，不需要立刻读完所有 Python。',
+    beginnerNote: '量化系统遵循严密的分层架构：前端交互负责参数配置，API 层校验入参并写入队列，后台 Worker 异步消费长任务，MySQL 持久化审计数据。先掌握端到端任务流转，再逐步深入算法细节。',
     plainWords: [
-      { term: 'Router', translation: '接收 HTTP 请求的 Controller 层。', projectUse: 'backend/app/api 下定义接口。' },
-      { term: 'Schema', translation: '请求和响应的数据契约。', projectUse: 'Pydantic 会拒绝非法权重和日期。' },
-      { term: 'Worker', translation: '脱离网页请求执行长任务的后台进程。', projectUse: '采集、AI 分析和回测在 Worker 中运行。' },
-      { term: '幂等', translation: '重复执行不会不断制造重复数据。', projectUse: '行情使用业务唯一键，新闻使用哈希与近似去重。' },
-      { term: '状态机', translation: '对象只能按允许的顺序改变状态。', projectUse: '任务从 queued 到 running，再到 success/failed。' },
+      { term: 'Router', translation: '接收 HTTP 请求的路由控制层。', projectUse: 'backend/app/api 下定义接口。' },
+      { term: 'Schema', translation: '请求和响应的数据契约模型。', projectUse: 'Pydantic 会拒绝非法权重和日期。' },
+      { term: 'Worker', translation: '脱离网页请求执行长耗时计算的后台进程。', projectUse: '采集、AI 分析和回测在 Worker 中运行。' },
+      { term: '幂等', translation: '重复执行多次不会产生多余副作用或重复数据。', projectUse: '行情使用业务唯一键，新闻使用哈希与近似去重。' },
+      { term: '状态机', translation: '任务实体按照严格定义的状态流转规则转换状态。', projectUse: '任务从 queued 到 running，再到 success/failed。' },
     ],
     concepts: [
       {
@@ -199,7 +199,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
         challenge: '给“运行质量检查”画一张五节点调用图，并在每个节点写输入输出。',
       },
       {
-        focus: '理解任务不是一个 loading 动画，而是一条可恢复、有尝试次数和证据的数据库记录。',
+        focus: '深入理解任务的持久化机制：任务是包含状态机、尝试次数、输入快照与错误堆栈的数据库实体。',
         pitfallDetails: [
           { why: '网络重试若直接 insert，会让同一新闻多次计入情绪因子。', correction: '用业务唯一键、内容哈希或流水线活动任务检查保证幂等。', selfCheck: '重复点两次全流程按钮会得到两个并发任务吗？' },
           { why: '日志会轮转且不便跨设备查询，用户只看到“没反应”。', correction: '把 error、result、progress、attempts 保存到任务表。', selfCheck: '服务重启后还能看到失败原因和重试次数吗？' },
@@ -240,14 +240,14 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
     },
     readings: [
       { title: 'FastAPI Tutorial', provider: 'FastAPI 官方', url: 'https://fastapi.tiangolo.com/tutorial/', takeaway: '用类型化请求、依赖注入和分层路由建立可测试 API。', kind: '官方教程' },
-      { title: 'SQLAlchemy ORM Quick Start', provider: 'SQLAlchemy 官方', url: 'https://docs.sqlalchemy.org/en/20/orm/quickstart.html', takeaway: '理解模型、Session、事务和查询，映射你熟悉的 Java ORM 经验。', kind: '官方教程' },
+      { title: 'SQLAlchemy ORM Quick Start', provider: 'SQLAlchemy 官方', url: 'https://docs.sqlalchemy.org/en/20/orm/quickstart.html', takeaway: '深入理解模型定义、Session 会话管理、事务边界与现代化查询构建。', kind: '官方教程' },
     ],
   },
 
   'python-bridge': {
-    beginnerNote: '你已经会 Java/JS，这章不从变量定义讲起，而是专门补 Python 会让老开发者踩坑的对象引用、可变默认值、迭代器、异常和测试。',
+    beginnerNote: '本章面向具备通用软件开发经验的工程师，跳过基础变量语法复述，重点剖析 Python 对象引用模型、可变默认值陷阱、迭代器与生成器协议以及 pytest 单元测试规范。',
     plainWords: [
-      { term: '绑定', translation: '变量名指向对象，而不是固定类型的存储槽。', projectUse: '两个变量可能指向同一个 list。' },
+      { term: '引用绑定', translation: '变量名作为指向内存对象的指针标签。', projectUse: '多个变量名可能同时指向同一个可变 list。' },
       { term: '可变对象', translation: '创建后内容还能改变的对象，如 list/dict。', projectUse: 'Pydantic 使用 default_factory 防共享。' },
       { term: '迭代器', translation: '按需逐个产出元素的对象。', projectUse: '处理大数据时避免一次全放内存。' },
       { term: '上下文管理器', translation: '进入/退出时自动申请与释放资源。', projectUse: 'with Session(...) 保证数据库会话关闭。' },
@@ -255,7 +255,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
     ],
     concepts: [
       {
-        focus: '掌握 == 与 is、可变对象和默认参数，避免从 Java 迁移时产生隐蔽共享状态。',
+        focus: '掌握 == 与 is 的语义差异、可变与不可变对象以及默认参数机制，避免产生隐蔽的跨调用共享状态。',
         pitfallDetails: [
           { why: 'is 比较是否同一个对象，小整数或字符串驻留会让错误偶尔“看似可用”。', correction: '业务值使用 ==，只有判断 None 时常用 is None。', selfCheck: '两个内容相同但分别创建的 list，== 和 is 各是什么？' },
           { why: '注解不会阻止错误类型进入普通函数，运行时仍可能在深处失败。', correction: '边界用 Pydantic，内部用类型检查和测试。', selfCheck: '把字符串传给标注 float 的普通函数会自动报错吗？' },
@@ -311,7 +311,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'numpy-pandas': {
-    beginnerNote: 'NumPy/pandas 最重要的不是 API 数量，而是数组形状、索引标签和时间顺序。金融错误经常不会抛异常，只会悄悄算出错位结果。',
+    beginnerNote: '掌握 NumPy 与 pandas 的关键在于理解多维数组形状（shape）、时间戳索引标签对齐与因果时序。在金融时序计算中，很多逻辑错误不会触发异常，而是静默产生时序错位。',
     plainWords: [
       { term: 'shape', translation: '数组每个维度的长度。', projectUse: '先检查行数、列数是否符合预期。' },
       { term: 'dtype', translation: '一列底层保存的数值类型。', projectUse: 'object 可能意味着数字被读成字符串。' },
@@ -321,7 +321,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
     ],
     concepts: [
       {
-        focus: '先看 shape/dtype/axis，再做聚合；NaN 是“未知”，不是天然的 0。',
+        focus: '重点掌握 shape、dtype 与计算维度的确定性；明确 NaN 代表数据缺失而非数值零。',
         pitfallDetails: [
           { why: 'object 列可能进行字符串拼接或无法比较，数值错误会延迟到深处出现。', correction: '读取后立即检查 dtypes，并用 to_numeric(errors="raise")。', selfCheck: 'close 列中混入“停牌”两个字会怎样？' },
           { why: 'axis=0 与 axis=1 得到完全不同的业务含义，却都能返回合法数字。', correction: '计算前用一句话说清“对每列跨日期”还是“每行跨股票”。', selfCheck: 'DataFrame.mean(axis=1) 的每个输出对应什么？' },
@@ -377,7 +377,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'market-data': {
-    beginnerNote: '行情和财务并不是“下载下来就能用”。你必须知道价格是否复权、日期是否可交易、财报何时真正公开，以及停牌时是否能成交。',
+    beginnerNote: '量化数据在清洗前不可直接投入计算。必须严格校验价格前复权口径、交易日历对齐、财务报表的法定披露时点以及停牌状态下的交易限制。',
     plainWords: [
       { term: '除权除息', translation: '分红送股后交易所机械调整参考价。', projectUse: '原始价可能断层，因子用统一复权序列。' },
       { term: '停牌', translation: '交易日内该股票不可正常买卖。', projectUse: '回测不能假设停牌日按收盘价换仓。' },
@@ -442,7 +442,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'factor-backtest': {
-    beginnerNote: '因子只是“打分依据”，策略还要决定标准化、排序、持仓、执行和成本。回测的任务是尽量诚实地模拟这些规则，而不是画出最漂亮的曲线。',
+    beginnerNote: '因子负责提取多维特征，策略层进一步负责标准化、排序、权重分配、调仓执行与成本扣除。回测的核心目标是真实还原交易执行过程并客观评估风险。',
     plainWords: [
       { term: '横截面', translation: '同一天在多只股票之间比较。', projectUse: '把动量、质量、情绪标准化后排名。' },
       { term: '标准化', translation: '把不同量纲变成可组合的相对分数。', projectUse: '避免 ROE 与收益率直接相加。' },
@@ -508,7 +508,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'sentiment-llm': {
-    beginnerNote: '舆情因子不是让模型预测股价，而是把给定新闻转成可审计的结构化字段。来源、发布时间、去重、置信度和模型版本与分数同样重要。',
+    beginnerNote: '在大模型舆情分析中，LLM 主要承担非结构化文本的结构化提取任务。新闻发布时间、来源可信度、去重机制、模型置信度与版本控制是保障舆情特征可审计的关键。',
     plainWords: [
       { term: 'Schema', translation: '输出必须遵守的字段与类型。', projectUse: 'label/score/confidence/summary/rationale。' },
       { term: '结构化输出', translation: '让文本结果变成程序可校验的 JSON。', projectUse: '非法标签和范围会被后端拒绝或规范化。' },
@@ -574,7 +574,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'walk-forward': {
-    beginnerNote: 'Walk-forward 像按时间进行多次模拟考试：每次只用过去选参数，锁定后参加下一段测试。最终成绩只拼测试卷，训练卷不能混进去。',
+    beginnerNote: 'Walk-forward 模拟真实的滚动研究决策：每次只用过去选参数，锁定后参加下一段测试。最终成绩只拼测试卷，训练卷不能混进去。',
     plainWords: [
       { term: '训练窗口', translation: '允许选择参数的过去数据。', projectUse: '比较候选动量窗口和阈值。' },
       { term: '测试窗口', translation: '锁定参数后第一次看到的数据。', projectUse: '只用于评估，不现场改规则。' },
@@ -639,7 +639,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'research-engineering': {
-    beginnerNote: '研究工程化的目标不是“服务能启动”，而是同一任务可重复、错误有证据、秘密不泄漏、数据异常不会悄悄变成交易信号。',
+    beginnerNote: '量化研究工程化的核心目标是保障任务可重复执行、错误具备审计证据、敏感凭证安全隔离，并通过数据质量规则拦截脏数据。',
     plainWords: [
       { term: '幂等键', translation: '判断两次写入是否同一业务记录的键。', projectUse: 'symbol+trade_date、news content_hash。' },
       { term: '事务', translation: '一组写入要么一起成功，要么一起回滚。', projectUse: 'Worker 失败后 rollback 再重试。' },
@@ -704,7 +704,7 @@ export const beginnerWorkbooks: Record<string, ChapterWorkbook> = {
   },
 
   'capstone': {
-    beginnerNote: '毕业项目不是再加十个功能，而是交付一条可复查证据链：问题、数据、方法、版本、结果、失败、局限和下一步。能诚实停止一个无效策略也是成果。',
+    beginnerNote: '毕业项目的核心目标是交付一条逻辑严密、可独立复现的研究证据链：包含研究假设、数据来源、因子方法、回测版本、实验结果、局限性剖析与后续改进规划。',
     plainWords: [
       { term: '研究问题', translation: '范围明确、能被结果回答的问题。', projectUse: '限定股票池、时期和因子。' },
       { term: '验收标准', translation: '运行前写好的通过/失败条件。', projectUse: 'OOS、回撤、换手和数据质量门槛。' },
