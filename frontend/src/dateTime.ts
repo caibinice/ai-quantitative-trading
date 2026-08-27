@@ -1,3 +1,5 @@
+import { localeForLanguage, type Language } from './i18n'
+
 const BEIJING_TIME_ZONE = 'Asia/Shanghai'
 
 function parseApiDateTime(value: string): Date {
@@ -7,9 +9,9 @@ function parseApiDateTime(value: string): Date {
   return new Date(hasZone ? value : `${value}Z`)
 }
 
-export function formatBeijingDateTime(value: string | null | undefined): string {
+export function formatBeijingDateTime(value: string | null | undefined, language?: Language): string {
   if (!value) return '—'
-  return parseApiDateTime(value).toLocaleString('zh-CN', {
+  return parseApiDateTime(value).toLocaleString(localeForLanguage(language), {
     timeZone: BEIJING_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
@@ -20,16 +22,16 @@ export function formatBeijingDateTime(value: string | null | undefined): string 
   })
 }
 
-export function formatBeijingDate(value: string): string {
-  return parseApiDateTime(value).toLocaleDateString('zh-CN', {
+export function formatBeijingDate(value: string, language?: Language): string {
+  return parseApiDateTime(value).toLocaleDateString(localeForLanguage(language), {
     timeZone: BEIJING_TIME_ZONE,
     month: '2-digit',
     day: '2-digit',
   })
 }
 
-export function formatBeijingTime(value: string): string {
-  return parseApiDateTime(value).toLocaleTimeString('zh-CN', {
+export function formatBeijingTime(value: string, language?: Language): string {
+  return parseApiDateTime(value).toLocaleTimeString(localeForLanguage(language), {
     timeZone: BEIJING_TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',

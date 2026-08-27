@@ -1,3 +1,5 @@
+import { tr } from './i18n'
+
 type TokenRequester = () => Promise<string>
 
 const TOKEN_KEY = 'quant-action-token'
@@ -30,6 +32,6 @@ export function clearActionAuthorization(): void {
 export async function getActionAuthorization(): Promise<string> {
   const existing = storedAuthorization()
   if (existing) return existing
-  if (!tokenRequester) throw new Error('操作验证界面尚未就绪')
+  if (!tokenRequester) throw new Error(tr('操作验证界面尚未就绪'))
   return tokenRequester()
 }

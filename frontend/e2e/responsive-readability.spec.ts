@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { setUiLanguage } from './language-helper'
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context, baseURL }) => {
+  await setUiLanguage(context, baseURL, 'zh-CN')
   await page.addInitScript(() => window.localStorage.setItem('ai-quant-theme', 'light'))
 })
 

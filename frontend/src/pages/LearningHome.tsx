@@ -12,11 +12,13 @@ import {
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import {
-  learningChapters,
-  learningStages,
+  learningChapters as sourceLearningChapters,
+  learningStages as sourceLearningStages,
   totalChecklistItems,
 } from '../learning/curriculum'
+import { localizeLearning } from '../learning/localizeLearning'
 import { useLearningProgress } from '../learning/useLearningProgress'
+import { localize, tr } from '../i18n'
 
 const glossary = [
   {
@@ -38,6 +40,9 @@ const glossary = [
 ]
 
 export function LearningHome() {
+  const learningChapters = localizeLearning(sourceLearningChapters)
+  const learningStages = localizeLearning(sourceLearningStages)
+  const localizedGlossary = localizeLearning(glossary)
   const {
     summary,
     chapterCompleted,
@@ -46,7 +51,7 @@ export function LearningHome() {
   } = useLearningProgress()
 
   const handleReset = () => {
-    if (window.confirm('确定清空全部学习 Checklist 和测验成绩吗？')) {
+    if (window.confirm(tr('确定清空全部学习 Checklist 和测验成绩吗？'))) {
       resetProgress()
     }
   }
@@ -55,15 +60,19 @@ export function LearningHome() {
     <>
       <PageHeader
         eyebrow="Developer quant academy"
-        title="软件开发者的量化交易实战手册"
-        description={`专为具备编程思维的软件开发者设计：五个阶段、${learningChapters.length} 个循序渐进章节。从市场交易常识与时间序列清洗，到因子构建、大模型舆情分析、样本外 Walk-forward 验证与量化工程体系。`}
+        title={tr("软件开发者的量化交易实战手册")}
+        description={localize({
+          'zh-CN': `专为具备编程思维的软件开发者设计：五个阶段、${learningChapters.length} 个循序渐进章节。从市场交易常识与时间序列清洗，到因子构建、大模型舆情分析、样本外 Walk-forward 验证与量化工程体系。`,
+          en: `Designed for software developers: five stages and ${learningChapters.length} progressive chapters, from market mechanics and time-series cleaning to factor construction, LLM sentiment analysis, walk-forward validation, and production-grade quantitative research.`,
+          ja: `ソフトウェア開発者向けに、5つのステージと${learningChapters.length}章を用意しました。市場の仕組みと時系列データの整備から、ファクター構築、LLMセンチメント分析、ウォークフォワード検証、クオンツリサーチの実装まで段階的に学べます。`,
+        })}
         actions={(
           <>
             <button className="button" onClick={handleReset}>
-              <RotateCcw size={15} /> 重置进度
+              <RotateCcw size={15} /> {tr("重置进度")}
             </button>
             <Link className="button primary" to={`/learn/${learningChapters[0].id}`}>
-              开始第一章 <ArrowRight size={15} />
+              {tr("开始第一章")} <ArrowRight size={15} />
             </Link>
           </>
         )}
@@ -72,30 +81,29 @@ export function LearningHome() {
       <section className="learning-hero panel">
         <div className="learning-hero-copy">
           <span className="section-kicker">ENGINEERING TO QUANT</span>
-          <h2>发挥工程优势，由浅入深构建可信量化研究体系</h2>
+          <h2>{tr("发挥工程优势，由浅入深构建可信量化研究体系")}</h2>
           <p>
-            软件开发者具备代码逻辑、测试思维与系统架构能力，而量化交易的核心正是把投资假设转化为可复现、可证伪的软件实验。
-            本手册抛弃玄学口诀与模糊预测，专注解决真实市场数据对齐、信息时点因果性、回测交易成本、大模型舆情结构化与滚动样本外验证。
+            {tr("软件开发者具备代码逻辑、测试思维与系统架构能力，而量化交易的核心正是把投资假设转化为可复现、可证伪的软件实验。 本手册抛弃玄学口诀与模糊预测，专注解决真实市场数据对齐、信息时点因果性、回测交易成本、大模型舆情结构化与滚动样本外验证。")}
           </p>
           <div className="persona-tags">
-            <span>通用编程 → 科学计算 Python</span>
-            <span>数据结构 → pandas 时间序列</span>
-            <span>业务逻辑 → 因子与信号工程</span>
-            <span>系统测试 → 杜绝未来函数与过拟合</span>
+            <span>{tr("通用编程 → 科学计算 Python")}</span>
+            <span>{tr("数据结构 → pandas 时间序列")}</span>
+            <span>{tr("业务逻辑 → 因子与信号工程")}</span>
+            <span>{tr("系统测试 → 杜绝未来函数与过拟合")}</span>
           </div>
         </div>
         <div className="learning-progress-orbit">
           <div className="progress-ring" style={{ '--progress': `${summary.percent * 3.6}deg` } as React.CSSProperties}>
-            <div><strong>{summary.percent}%</strong><span>总进度</span></div>
+            <div><strong>{summary.percent}%</strong><span>{tr("总进度")}</span></div>
           </div>
           <div className="learning-progress-meta">
             <span><b>{summary.completedChecklist}</b> / {totalChecklistItems} Checklist</span>
-            <span><b>{summary.passedQuizzes}</b> / {learningChapters.length} 测验通过</span>
+            <span><b>{summary.passedQuizzes}</b> / {learningChapters.length} {tr("测验通过")}</span>
             <span className={`progress-sync ${syncState}`}>
-              {syncState === 'loading' && '正在读取云端进度'}
-              {syncState === 'saving' && '正在保存到 MySQL'}
-              {syncState === 'synced' && '已同步到 MySQL'}
-              {syncState === 'offline' && '离线缓存，稍后重试'}
+              {syncState === 'loading' && tr('正在读取云端进度')}
+              {syncState === 'saving' && tr('正在保存到 MySQL')}
+              {syncState === 'synced' && tr('已同步到 MySQL')}
+              {syncState === 'offline' && tr('离线缓存，稍后重试')}
             </span>
           </div>
         </div>
@@ -110,9 +118,9 @@ export function LearningHome() {
         ].map(({ icon: Icon, label, value, note }) => (
           <article className="panel learning-stat" key={label}>
             <Icon size={19} />
-            <span>{label}</span>
+            <span>{tr(label)}</span>
             <strong>{value}</strong>
-            <small>{note}</small>
+            <small>{tr(note)}</small>
           </article>
         ))}
       </section>
@@ -120,9 +128,9 @@ export function LearningHome() {
       <section className="learning-section-head">
         <div>
           <span className="section-kicker">FIVE-STAGE ROADMAP</span>
-          <h2>进阶训练 1 → 2 → 3 → 4 → 5</h2>
+          <h2>{tr("进阶训练 1 → 2 → 3 → 4 → 5")}</h2>
         </div>
-        <p>第一阶段先补股票/K 线常识和项目地图；随后学习数据、策略、AI 验证与工程化。</p>
+        <p>{tr("第一阶段先补股票/K 线常识和项目地图；随后学习数据、策略、AI 验证与工程化。")}</p>
       </section>
 
       <section className="stage-roadmap">
@@ -138,7 +146,7 @@ export function LearningHome() {
             <article className="stage-card panel" key={stage.id}>
               <div className="stage-number">{String(stage.id).padStart(2, '0')}</div>
               <div className="stage-card-head">
-                <span>阶段 {stage.id}</span>
+                <span>{tr("阶段")} {stage.id}</span>
                 <b>{stagePercent}%</b>
               </div>
               <h3>{stage.title}</h3>
@@ -151,7 +159,7 @@ export function LearningHome() {
                   return (
                     <Link to={`/learn/${chapter.id}`} key={chapter.id}>
                       <span>{String(chapter.order).padStart(2, '0')}</span>
-                      <div><strong>{chapter.title}</strong><small>{done}/{chapter.checklist.length} 已完成</small></div>
+                      <div><strong>{chapter.title}</strong><small>{done}/{chapter.checklist.length} {tr("已完成")}</small></div>
                       <ArrowRight size={14} />
                     </Link>
                   )
@@ -165,10 +173,10 @@ export function LearningHome() {
       <section className="learning-bottom-grid">
         <article className="panel glossary-panel">
           <div className="panel-head">
-            <div><span className="section-kicker">FIRST PRINCIPLES</span><h2>开始前先分清四个词</h2></div>
+            <div><span className="section-kicker">FIRST PRINCIPLES</span><h2>{tr("开始前先分清四个词")}</h2></div>
           </div>
           <div className="glossary-grid">
-            {glossary.map((item) => (
+            {localizedGlossary.map((item) => (
               <div key={item.term}><strong>{item.term}</strong><p>{item.definition}</p></div>
             ))}
           </div>
@@ -177,13 +185,12 @@ export function LearningHome() {
         <article className="panel outcome-panel">
           <GraduationCap size={27} />
           <span className="section-kicker">FINAL OUTCOME</span>
-          <h2>最终成果：一份可信的双因子研究</h2>
+          <h2>{tr("最终成果：一份可信的双因子研究")}</h2>
           <p>
-            用真实日历、点时财务、指数基准和新闻情绪完成策略；扣除成本，运行 Walk-forward，
-            写出能复现、能被否定、明确列出局限的研究报告。
+            {tr("用真实日历、点时财务、指数基准和新闻情绪完成策略；扣除成本，运行 Walk-forward， 写出能复现、能被否定、明确列出局限的研究报告。")}
           </p>
           <div className="outcome-actions">
-            <Link className="button" to="/learn/capstone"><FlaskConical size={15} /> 查看毕业要求</Link>
+            <Link className="button" to="/learn/capstone"><FlaskConical size={15} /> {tr("查看毕业要求")}</Link>
             <code><Code2 size={13} /> pwsh -File scripts\check.ps1</code>
           </div>
         </article>
