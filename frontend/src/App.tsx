@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Loading } from './components/StatePanel'
+import { tr } from './i18n'
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })))
 const Market = lazy(() => import('./pages/Market').then((module) => ({ default: module.Market })))
@@ -16,5 +17,5 @@ const LearningChapter = lazy(() => import('./pages/LearningChapter').then((modul
 const LearningConceptDetail = lazy(() => import('./pages/LearningConceptDetail').then((module) => ({ default: module.LearningConceptDetail })))
 
 export default function App() {
-  return <Layout><Suspense fallback={<Loading label="加载研究模块…" />}><Routes><Route path="/" element={<Dashboard />} /><Route path="/learn" element={<LearningHome />} /><Route path="/learn/:chapterId" element={<LearningChapter />} /><Route path="/learn/:chapterId/concepts/:conceptIndex" element={<LearningConceptDetail />} /><Route path="/market" element={<Market />} /><Route path="/rankings" element={<Rankings />} /><Route path="/sentiment" element={<Sentiment />} /><Route path="/strategy" element={<Strategy />} /><Route path="/walk-forward" element={<WalkForward />} /><Route path="/tasks" element={<Tasks />} /><Route path="/data-quality" element={<DataQuality />} /></Routes></Suspense></Layout>
+  return <Layout><Suspense fallback={<Loading label={tr("加载研究模块…")} />}><Routes><Route path="/" element={<Dashboard />} /><Route path="/learn" element={<LearningHome />} /><Route path="/learn/:chapterId" element={<LearningChapter />} /><Route path="/learn/:chapterId/concepts/:conceptIndex" element={<LearningConceptDetail />} /><Route path="/market" element={<Market />} /><Route path="/rankings" element={<Rankings />} /><Route path="/sentiment" element={<Sentiment />} /><Route path="/strategy" element={<Strategy />} /><Route path="/walk-forward" element={<WalkForward />} /><Route path="/tasks" element={<Tasks />} /><Route path="/data-quality" element={<DataQuality />} /></Routes></Suspense></Layout>
 }

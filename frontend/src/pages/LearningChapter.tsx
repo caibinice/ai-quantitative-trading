@@ -18,22 +18,27 @@ import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { apiUrl } from '../api'
 import {
-  chapterById,
-  learningChapters,
-  learningStages,
+  chapterById as sourceChapterById,
+  learningChapters as sourceLearningChapters,
+  learningStages as sourceLearningStages,
   type LearningChapter as LearningChapterType,
 } from '../learning/curriculum'
 import { checklistKey, useLearningProgress } from '../learning/useLearningProgress'
-import { chapterGuides } from '../learning/chapterGuides'
+import { chapterGuides as sourceChapterGuides } from '../learning/chapterGuides'
+import { localizeLearning } from '../learning/localizeLearning'
+import { localize, tr } from '../i18n'
 
 export function LearningChapter() {
   const { chapterId = '' } = useParams()
-  const chapter = chapterById[chapterId]
+  const chapter = sourceChapterById[chapterId]
   if (!chapter) return <Navigate to="/learn" replace />
-  return <ChapterContent chapter={chapter} key={chapter.id} />
+  return <ChapterContent chapter={localizeLearning(chapter)} key={chapter.id} />
 }
 
 function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
+  const learningChapters = localizeLearning(sourceLearningChapters)
+  const learningStages = localizeLearning(sourceLearningStages)
+  const chapterGuides = localizeLearning(sourceChapterGuides)
   const {
     progress,
     chapterCompleted,
@@ -64,15 +69,15 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
   return (
     <div className="chapter-page">
       <aside className="chapter-nav panel">
-        <Link className="chapter-home-link" to="/learn"><ArrowLeft size={14} /> 学习学院</Link>
+        <Link className="chapter-home-link" to="/learn"><ArrowLeft size={14} /> {tr("学习学院")}</Link>
         <div className="chapter-nav-progress">
-          <span>总体章节</span>
+          <span>{tr("总体章节")}</span>
           <strong>{chapter.order} / {learningChapters.length}</strong>
         </div>
         <nav>
           {learningStages.map((learningStage) => (
             <div className="chapter-nav-stage" key={learningStage.id}>
-              <span>阶段 {learningStage.id} · {learningStage.title}</span>
+              <span>{tr("阶段")} {learningStage.id} · {learningStage.title}</span>
               {learningChapters.filter((item) => item.stage === learningStage.id).map((item) => {
                 const done = chapterCompleted(item.id)
                 return (
@@ -89,7 +94,13 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
 
       <main className="chapter-content">
         <header className="chapter-hero panel">
-          <div className="chapter-breadcrumb">阶段 {chapter.stage} / 第 {chapter.order} 章</div>
+          <div className="chapter-breadcrumb">
+            {localize({
+              en: 'Stage {stage} / Chapter {order}',
+              'zh-CN': '阶段 {stage} / 第 {order} 章',
+              ja: 'ステージ {stage} / 第{order}章',
+            }, { stage: chapter.stage, order: chapter.order })}
+          </div>
           <div className="chapter-hero-main">
             <div>
               <span className="section-kicker">{stage?.subtitle}</span>
@@ -104,26 +115,31 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
           <div className="chapter-progress-line">
             <i style={{ width: `${chapterPercent}%` }} />
           </div>
-          <small>
-            {completed}/{chapter.checklist.length} 项完成 · {chapterPercent}%
-            {' · '}
-            {syncState === 'synced' ? '云端已同步' : syncState === 'offline' ? '离线缓存' : '同步中'}
-          </small>
+          <small>{localize({
+            en: '{completed}/{total} completed · {percent}% · {sync}',
+            'zh-CN': '{completed}/{total} 项完成 · {percent}% · {sync}',
+            ja: '{completed}/{total}件完了 · {percent}% · {sync}',
+          }, {
+            completed,
+            total: chapter.checklist.length,
+            percent: chapterPercent,
+            sync: tr(syncState === 'synced' ? '云端已同步' : syncState === 'offline' ? '离线缓存' : '同步中'),
+          })}</small>
         </header>
 
         <section className="chapter-objective panel">
           <Target size={20} />
-          <div><span>本章目标</span><p>{chapter.objective}</p></div>
+          <div><span>{tr("本章目标")}</span><p>{chapter.objective}</p></div>
         </section>
 
         {guide && (
           <section className="chapter-textbook">
             <div className="chapter-section-title">
               <BookOpen size={18} />
-              <div><span>FULL CHAPTER GUIDE</span><h2>本章教材正文</h2></div>
+              <div><span>FULL CHAPTER GUIDE</span><h2>{tr("本章教材正文")}</h2></div>
             </div>
             <article className="panel textbook-intro">
-              <span>先用大白话说</span>
+              <span>{tr("先用大白话说")}</span>
               <p>{guide.plainLanguage}</p>
             </article>
             {chapter.id === 'market-basics' && <KlinePrimer />}
@@ -153,12 +169,12 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
                 </article>
                 <article className="panel guide-terms">
                   <span className="section-kicker">PLAIN GLOSSARY</span>
-                  <h3>本章名词翻译</h3>
+                  <h3>{tr("本章名词翻译")}</h3>
                   {guide.terms.map((item) => (
                     <div key={item.term}>
                       <strong>{item.term}</strong>
                       <p>{item.meaning}</p>
-                      <small>例：{item.example}</small>
+                      <small>{tr("例：")}{item.example}</small>
                     </div>
                   ))}
                 </article>
@@ -179,7 +195,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         <section className="chapter-section">
           <div className="chapter-section-title">
             <BookOpen size={18} />
-            <div><span>KNOWLEDGE MAP</span><h2>知识梗概</h2></div>
+            <div><span>KNOWLEDGE MAP</span><h2>{tr("知识梗概")}</h2></div>
           </div>
           <div className="concept-grid">
             {chapter.concepts.map((concept, index) => (
@@ -188,7 +204,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
                 <h3>{concept.title}</h3>
                 <p>{concept.summary}</p>
                 <ul>{concept.points.map((point) => <li key={point}>{point}</li>)}</ul>
-                <strong className="concept-enter">进入详情 <ArrowRight size={13} /></strong>
+                <strong className="concept-enter">{tr("进入详情")} <ArrowRight size={13} /></strong>
               </Link>
             ))}
           </div>
@@ -197,7 +213,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         <section className="chapter-two-column">
           <article className="panel chapter-outcomes">
             <div className="panel-head">
-              <div><span className="section-kicker">LEARNING OUTCOMES</span><h2>学完你应该能做到</h2></div>
+              <div><span className="section-kicker">LEARNING OUTCOMES</span><h2>{tr("学完你应该能做到")}</h2></div>
             </div>
             <div>
               {chapter.outcomes.map((outcome) => (
@@ -208,14 +224,18 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
 
           <article className="panel project-map">
             <div className="panel-head">
-              <div><span className="section-kicker">READ THE PROJECT</span><h2>对应项目文件</h2></div>
+              <div><span className="section-kicker">READ THE PROJECT</span><h2>{tr("对应项目文件")}</h2></div>
             </div>
             <div>
               {chapter.projectFiles.map((file) => (
                 <a
                   href={downloadUrl(file.path)}
                   download
-                  title={`下载 ${file.path}`}
+                  title={localize({
+                    en: 'Download {path}',
+                    'zh-CN': '下载 {path}',
+                    ja: '{path} をダウンロード',
+                  }, { path: file.path })}
                   key={file.path}
                 >
                   <FileCode2 size={15} />
@@ -230,7 +250,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         <section className="panel demo-panel">
           <div className="demo-copy">
             <span className="section-kicker">RUNNABLE LAB</span>
-            <h2><FlaskConical size={18} /> 本章动手实验</h2>
+            <h2><FlaskConical size={18} /> {tr("本章动手实验")}</h2>
             <p>{chapter.demo.summary}</p>
             <a className="demo-file" href={downloadUrl(chapter.demo.file)} download>
               <FileCode2 size={14} /> {chapter.demo.file}<Download size={13} />
@@ -243,7 +263,7 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         <section className="chapter-section">
           <div className="chapter-section-title">
             <ListChecks size={18} />
-            <div><span>ACTION CHECKLIST</span><h2>本章完成清单</h2></div>
+            <div><span>ACTION CHECKLIST</span><h2>{tr("本章完成清单")}</h2></div>
           </div>
           <div className="checklist-panel panel">
             {chapter.checklist.map((item, index) => {
@@ -268,10 +288,10 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
         <section className="quiz-panel panel">
           <div className="quiz-head">
             <HelpCircle size={21} />
-            <div><span className="section-kicker">QUICK CHECK</span><h2>本章小测验</h2></div>
+            <div><span className="section-kicker">QUICK CHECK</span><h2>{tr("本章小测验")}</h2></div>
             {submitted && (
               <strong className={currentScore >= 2 ? 'passed' : 'retry'}>
-                {currentScore}/{chapter.quiz.length} · {currentScore >= 2 ? '通过' : '再复习一下'}
+                {currentScore}/{chapter.quiz.length} · {tr(currentScore >= 2 ? '通过' : '再复习一下')}
               </strong>
             )}
           </div>
@@ -309,13 +329,13 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
             ))}
           </div>
           <button className="button primary quiz-submit" disabled={!allAnswered || submitted} onClick={submitQuiz}>
-            <CheckCircle2 size={15} /> {submitted ? '测验已提交' : '提交答案'}
+            <CheckCircle2 size={15} /> {tr(submitted ? '测验已提交' : '提交答案')}
           </button>
         </section>
 
         <section className="panel resource-panel">
           <div className="panel-head">
-            <div><span className="section-kicker">CURATED REFERENCES</span><h2>延伸课程与官方资料</h2></div>
+            <div><span className="section-kicker">CURATED REFERENCES</span><h2>{tr("延伸课程与官方资料")}</h2></div>
           </div>
           <div className="resource-list">
             {chapter.resources.map((resource) => (
@@ -330,11 +350,11 @@ function ChapterContent({ chapter }: { chapter: LearningChapterType }) {
 
         <footer className="chapter-pager">
           {previous
-            ? <Link className="button" to={`/learn/${previous.id}`}><ArrowLeft size={15} /> 上一章：{previous.title}</Link>
-            : <Link className="button" to="/learn"><ArrowLeft size={15} /> 返回路线图</Link>}
+            ? <Link className="button" to={`/learn/${previous.id}`}><ArrowLeft size={15} /> {tr("上一章：")}{previous.title}</Link>
+            : <Link className="button" to="/learn"><ArrowLeft size={15} /> {tr("返回路线图")}</Link>}
           {next
-            ? <Link className="button primary" to={`/learn/${next.id}`}>下一章：{next.title} <ArrowRight size={15} /></Link>
-            : <Link className="button primary" to="/strategy">开始毕业实验 <ArrowRight size={15} /></Link>}
+            ? <Link className="button primary" to={`/learn/${next.id}`}>{tr("下一章：")}{next.title} <ArrowRight size={15} /></Link>
+            : <Link className="button primary" to="/strategy">{tr("开始毕业实验")} <ArrowRight size={15} /></Link>}
         </footer>
       </main>
     </div>
@@ -352,18 +372,18 @@ function KlinePrimer() {
     <article className="panel kline-primer">
       <div className="kline-copy">
         <span className="section-kicker">CANDLESTICK ANATOMY</span>
-        <h3>先把 K 线当成 OHLC 数据图，不背“形态口诀”</h3>
-        <p>细线覆盖最低到最高，矩形实体覆盖开盘到收盘。右侧四根只是不同 OHLC 组合；它们描述已经发生的价格路径，不自动包含未来方向。</p>
-        <div><span><i className="up" />收盘 ≥ 开盘</span><span><i className="down" />收盘 ＜ 开盘</span></div>
+        <h3>{tr("先把 K 线当成 OHLC 数据图，不背“形态口诀”")}</h3>
+        <p>{tr("细线覆盖最低到最高，矩形实体覆盖开盘到收盘。右侧四根只是不同 OHLC 组合；它们描述已经发生的价格路径，不自动包含未来方向。")}</p>
+        <div><span><i className="up" />{tr("收盘 ≥ 开盘")}</span><span><i className="down" />{tr("收盘 ＜ 开盘")}</span></div>
       </div>
       <div className="candlestick-board">
-        <span className="price-label high">High 最高</span>
-        <span className="price-label low">Low 最低</span>
+        <span className="price-label high">{tr("High 最高")}</span>
+        <span className="price-label low">{tr("Low 最低")}</span>
         {candles.map((candle) => (
           <div className="teaching-candle" key={candle.label}>
             <i className={`wick ${candle.type}`} style={{ top: candle.high, bottom: candle.low }} />
             <b className={`body ${candle.type}`} style={{ top: candle.bodyTop, height: candle.bodyHeight }} />
-            <span>{candle.label}</span>
+            <span>{tr(candle.label)}</span>
           </div>
         ))}
       </div>

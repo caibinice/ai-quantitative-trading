@@ -5,6 +5,7 @@ import {
   CandlestickChart,
   CalendarCheck2,
   FlaskConical,
+  Globe2,
   GraduationCap,
   ListTodo,
   Menu,
@@ -18,6 +19,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTheme } from '../theme-context'
+import { languageOptions, tr, useI18n, type Language } from '../i18n'
 
 const navItems = [
   { to: '/', label: '研究总览', icon: BarChart3 },
@@ -35,13 +37,15 @@ export function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
   const { theme, toggleTheme } = useTheme()
+  const { language, setLanguage } = useI18n()
   const activeItem = navItems.find(({ to }) => (
     to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`)
   )) ?? navItems[0]
+  const activeLabel = tr(activeItem.label)
 
   useEffect(() => {
-    document.title = `${activeItem.label} · AI 量化研究舱`
-  }, [activeItem.label])
+    document.title = `${activeLabel} · ${tr('AI 量化研究舱')}`
+  }, [activeLabel, language])
 
   return (
     <div className="app-shell">
@@ -50,14 +54,14 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="brand-mark"><Activity size={22} /></div>
           <div>
             <strong>QUANT LAB</strong>
-            <span>AI 量化研究舱</span>
+            <span>{tr("AI 量化研究舱")}</span>
           </div>
-          <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="关闭菜单">
+          <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label={tr("关闭菜单")}>
             <X size={20} />
           </button>
         </div>
         <nav>
-          <div className="nav-label">研究工作台</div>
+          <div className="nav-label">{tr("研究工作台")}</div>
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -67,30 +71,42 @@ export function Layout({ children }: { children: ReactNode }) {
               className={({ isActive }) => (isActive ? 'active' : '')}
             >
               <Icon size={19} strokeWidth={1.8} />
-              <span>{label}</span>
+              <span>{tr(label)}</span>
             </NavLink>
           ))}
         </nav>
         <div className="sidebar-foot">
           <Settings2 size={17} />
           <div>
-            <strong>研究模式</strong>
-            <span>不连接券商 · 不真实下单</span>
+            <strong>{tr("研究模式")}</strong>
+            <span>{tr("不连接券商 · 不真实下单")}</span>
           </div>
         </div>
       </aside>
       {mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-area">
         <header className="topbar">
-          <button className="menu-trigger" onClick={() => setMobileOpen(true)} aria-label="打开菜单">
+          <button className="menu-trigger" onClick={() => setMobileOpen(true)} aria-label={tr("打开菜单")}>
             <Menu size={21} />
           </button>
-          <div className="market-status"><span /><strong>{activeItem.label}</strong><small>A 股研究数据</small></div>
+          <div className="market-status"><span /><strong>{activeLabel}</strong><small>{tr("A 股研究数据")}</small></div>
           <div className="topbar-actions">
-            <div className="topbar-note">数据可能延迟 · 仅供学习研究</div>
-            <button className="theme-toggle" onClick={toggleTheme} aria-label={theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式'} title={theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式'}>
+            <div className="topbar-note">{tr("数据可能延迟 · 仅供学习研究")}</div>
+            <label className="language-switcher" title={tr('选择语言')}>
+              <Globe2 size={16} />
+              <select
+                aria-label={tr('选择语言')}
+                value={language}
+                onChange={(event) => setLanguage(event.target.value as Language)}
+              >
+                {languageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <button className="theme-toggle" onClick={toggleTheme} aria-label={tr(theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式')} title={tr(theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式')}>
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-              <span>{theme === 'dark' ? '明亮' : '暗黑'}</span>
+              <span>{tr(theme === 'dark' ? '明亮' : '暗黑')}</span>
             </button>
           </div>
         </header>

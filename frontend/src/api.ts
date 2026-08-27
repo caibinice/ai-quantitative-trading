@@ -2,6 +2,7 @@ import {
   clearActionAuthorization,
   getActionAuthorization,
 } from './actionAuth'
+import { getLanguage, localeForLanguage, tr } from './i18n'
 
 const APP_BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
 const API_BASE = import.meta.env.VITE_API_BASE ?? `${APP_BASE}/api`
@@ -17,6 +18,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     && !path.startsWith('/action-auth/')
   const headers = new Headers(options?.headers)
   headers.set('Content-Type', 'application/json')
+  headers.set('Accept-Language', getLanguage())
   if (requiresActionAuth) {
     headers.set('Authorization', await getActionAuthorization())
   }
@@ -28,7 +30,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }))
     const detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
-    throw new Error(detail || `请求失败 (${response.status})`)
+    throw new Error(tr(detail) || `${tr('请求失败')} (${response.status})`)
   }
   return response.json() as Promise<T>
 }
@@ -40,5 +42,5 @@ export function formatPercent(value?: number | null, digits = 2): string {
 
 export function formatNumber(value?: number | null, digits = 2): string {
   if (value === undefined || value === null || Number.isNaN(value)) return '—'
-  return new Intl.NumberFormat('zh-CN', { maximumFractionDigits: digits }).format(value)
+  return new Intl.NumberFormat(localeForLanguage(), { maximumFractionDigits: digits }).format(value)
 }

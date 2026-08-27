@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { setUiLanguage } from './language-helper'
+
+test.beforeEach(async ({ context, baseURL }) => {
+  await setUiLanguage(context, baseURL, 'zh-CN')
+})
 
 test('market page displays the persisted Tushare source', async ({ page }) => {
   await page.route('**/api/stocks**', (route) => route.fulfill({

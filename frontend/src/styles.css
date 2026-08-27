@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
 
 :root {
   color: #dce8f6;
   background: #07111d;
-  font-family: 'Manrope', 'Noto Sans SC', system-ui, sans-serif;
+  font-family: 'Manrope', 'Noto Sans JP', 'Noto Sans SC', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --bg: #07111d;
@@ -84,6 +84,10 @@ button { cursor: pointer; }
 .market-status small { padding-left: 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 500; }
 .topbar-actions { display: flex; align-items: center; gap: 13px; }
 .topbar-note { color: #53687d; font-size: 13px; }
+.language-switcher { height: 32px; padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 7px; color: #90a5b9; background: var(--panel-2); }
+.language-switcher:focus-within, .language-switcher:hover { color: var(--cyan); border-color: #327087; }
+.language-switcher select { width: 92px; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.language-switcher option { color: #172033; background: #f7fafc; }
 .theme-toggle { height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px; color: #90a5b9; background: var(--panel-2); font-size: 12px; font-weight: 700; }
 .theme-toggle:hover { color: var(--cyan); border-color: #327087; }
 .menu-trigger { display: none; border: 0; background: transparent; color: #9aacc0; }
@@ -169,11 +173,11 @@ button { cursor: pointer; }
 .info-banner svg { color: var(--cyan); flex: 0 0 auto; }
 
 .market-toolbar { min-height: 70px; display: flex; align-items: center; gap: 20px; padding: 13px 17px; margin-bottom: 15px; }
-.select-wrap { min-width: 200px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #0a1723; color: #637b91; }
+.select-wrap { min-width: 200px; max-width: 100%; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid var(--line); border-radius: 7px; background: #0a1723; color: #637b91; }
 select, input, textarea { border: 1px solid var(--line); border-radius: 7px; outline: none; color: #c5d5e5; background: #0a1723; transition: border-color .2s; }
 select:focus, input:focus, textarea:focus { border-color: #327087; }
 select { height: 36px; padding: 0 27px 0 10px; }
-.select-wrap select { flex: 1; border: 0; padding-left: 0; background: transparent; font-size: 14px; }
+.select-wrap select { min-width: 0; width: 100%; flex: 1; border: 0; padding-left: 0; background: transparent; font-size: 14px; }
 .symbol-title { padding-left: 20px; border-left: 1px solid var(--line); }
 .symbol-title strong, .symbol-title span { display: block; }
 .symbol-title strong { font-size: 16px; }.symbol-title span { margin-top: 3px; color: #647b91; font-size: 12px; }
@@ -303,6 +307,7 @@ tbody tr:hover { background: #11223288; }
   .leader-row { grid-template-columns: 25px 105px 1fr; }.score-number { display: none; }
   .sentiment-gauge { align-items: flex-start; flex-direction: column; }.sentiment-gauge > div + div { align-self: center; }
   .quote-grid { grid-template-columns: 1fr 1fr; }
+  .market-toolbar .select-wrap { width: 100%; min-width: 0; }
   .metric-grid, .field-row, .compact-grid { grid-template-columns: 1fr; }
   .result-metrics { grid-template-columns: 1fr 1fr; }
   .news-item { grid-template-columns: 1fr; gap: 8px; }.news-time { text-align: left; display: flex; gap: 6px; }.sentiment-marker { display: none; }.sentiment-result { grid-column: 1; }
@@ -897,6 +902,9 @@ html[data-theme='light'] .ranking-warning.ok { color: #526d80; background: #eaf7
 
 @media (max-width: 620px) {
   .market-status small { display: none; }
+  .topbar-actions { gap: 7px; }
+  .language-switcher { padding: 0 6px; }
+  .language-switcher select { width: 68px; padding: 0 18px 0 2px; font-size: 11px; }
   .theme-toggle span { display: none; }
   .theme-toggle { width: 34px; padding: 0; justify-content: center; }
   .stock-count-field { grid-template-columns: 1fr 86px; }

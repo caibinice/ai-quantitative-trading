@@ -1,6 +1,6 @@
 # AI 量化研究舱
 
-**[English](./README.md) | 简体中文**
+**[English](./README.md) | 简体中文 | [日本語](./README_JA.md)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](./LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
@@ -43,6 +43,7 @@
 - 策略实验室：可视化配置股票池、因子权重、窗口、门槛、持仓数量、手续费和滑点。
 - 动态股票池：默认 15 只跨行业大盘股，可用数量控件在 1–30 只间自动扩缩，也可直接编辑代码。
 - 明暗主题：顶部一键切换明亮/暗黑风格，主题会保存在浏览器，ECharts 图表同步换色。
+- 多语言界面：网页所有功能页支持 English、简体中文、日本語切换；已选择语言优先从 Cookie 恢复，否则自动匹配浏览器支持的语言，并以 English 作为默认语言。
 - 双因子回测：情绪 + 行情，强制信号延迟一根 K 线，输出资金曲线、基准、收益、回撤、夏普和换手率。
 - 交易日历与指数基准：保存 A 股交易日，回测可使用沪深 300 等真实指数，不再默认用股票池等权收益冒充基准。
 - 点时财务：报告期和真实公告日分开保存，评分日只能读取当时已经发布的指标。
@@ -436,7 +437,7 @@ Set-Location frontend
 npm run test:e2e
 ```
 
-Playwright 会验证明亮主题关键页面、动态页签标题、全部 11 章/33 个知识详情、源码下载、舆情标签配色和自动化配置。
+Playwright 会验证中英日语言检测与 Cookie 持久化、桌面/手机排版、明亮主题关键页面、动态页签标题、全部 11 章/33 个知识详情、源码下载、舆情标签配色和自动化配置。
 
 ## 目录
 
@@ -454,14 +455,16 @@ ai-quantitative-trading/
 │   └── tests/
 ├── frontend/src/
 │   ├── components/
+│   ├── i18n/                     # 界面与学习内容翻译
 │   └── pages/                    # 含样本外、任务中心和数据治理
-├── learning/                     # 学习手册、毕业模板和 6 个可运行实验
+├── learning/                     # 学习手册、毕业模板、教学数据与可运行实验
 ├── docs/images/                  # README 使用的线上站点截图
 ├── deploy/                       # Nginx、systemd 和远程安装模板
 ├── scripts/                      # 本地开发、检查及一键远程运维
 ├── .env.example
 ├── README.md                     # English documentation
-└── README_CN.md                  # 简体中文说明
+├── README_CN.md                  # 简体中文说明
+└── README_JA.md                  # 日本語ドキュメント
 ```
 
 ## 已知边界

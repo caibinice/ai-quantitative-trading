@@ -8,6 +8,7 @@ import { beijingDateInput } from '../dateTime'
 import { DEFAULT_STOCK_UNIVERSE, MAX_STOCK_COUNT } from '../stockUniverse'
 import { chartPalette, useTheme } from '../theme-context'
 import type { BacktestResult, ResearchTask, StrategyConfig, StrategyParameters } from '../types'
+import { localize, tr } from '../i18n'
 
 type Action = 'save' | 'sync' | 'analyze' | 'score' | 'backtest' | ''
 
@@ -37,20 +38,24 @@ export function Strategy() {
         setConfig(saved)
         setWatchlistText(saved.watchlist.join(', '))
         setMessage(saved.sync_task_id
-          ? `策略配置已保存；新增股票的数据同步任务 #${saved.sync_task_id} 已自动入队，行情页下拉框已按当前股票池更新。`
-          : '策略配置已保存；行情、舆情、排名和数据治理页将使用当前股票池。')
+          ? localize({
+            'zh-CN': `策略配置已保存；新增股票的数据同步任务 #${saved.sync_task_id} 已自动入队，行情页下拉框已按当前股票池更新。`,
+            en: `Strategy saved. Data sync task #${saved.sync_task_id} was queued for the new stocks, and the Market selector now uses the current universe.`,
+            ja: `戦略を保存しました。追加銘柄のデータ同期タスク #${saved.sync_task_id} をキューに登録し、市場画面の選択肢を現在の投資ユニバースに更新しました。`,
+          })
+          : tr('策略配置已保存；行情、舆情、排名和数据治理页将使用当前股票池。'))
       } else if (action === 'sync') {
         const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'market_sync', payload: { symbols: watchlist, start_date: startDate, end_date: endDate } }) })
-        setMessage(`数据同步任务 #${response.id} 已入队，可在任务中心查看进度。`)
+        setMessage(localize({ 'zh-CN': `数据同步任务 #${response.id} 已入队，可在任务中心查看进度。`, en: `Data sync task #${response.id} has been queued. Track it in Task Center.`, ja: `データ同期タスク #${response.id} をキューに登録しました。タスクセンターで進捗を確認できます。` }))
       } else if (action === 'analyze') {
         const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'sentiment_analysis', payload: { limit: 200 } }) })
-        setMessage(`情绪分析任务 #${response.id} 已入队。`)
+        setMessage(localize({ 'zh-CN': `情绪分析任务 #${response.id} 已入队。`, en: `Sentiment analysis task #${response.id} has been queued.`, ja: `センチメント分析タスク #${response.id} をキューに登録しました。` }))
       } else if (action === 'score') {
         const response = await api<ResearchTask>('/tasks', { method: 'POST', body: JSON.stringify({ task_type: 'factor_scoring', payload: { symbols: watchlist } }) })
-        setMessage(`点时因子评分任务 #${response.id} 已入队。`)
+        setMessage(localize({ 'zh-CN': `点时因子评分任务 #${response.id} 已入队。`, en: `Point-in-time factor scoring task #${response.id} has been queued.`, ja: `Point-in-Timeファクター評価タスク #${response.id} をキューに登録しました。` }))
       } else if (action === 'backtest') {
         const response = await api<BacktestResult>('/backtests', { method: 'POST', body: JSON.stringify({ name: config.name, symbols: watchlist, start_date: startDate, end_date: endDate, parameters: config.parameters }) })
-        setResult(response); setMessage('回测完成。信号已强制延迟一个交易日执行。')
+        setResult(response); setMessage(tr('回测完成。信号已强制延迟一个交易日执行。'))
       }
     } catch (err) { setError((err as Error).message) }
     finally { setActiveAction('') }
@@ -74,12 +79,12 @@ export function Strategy() {
   const weightTotal = config ? config.parameters.momentum_weight + config.parameters.quality_weight + config.parameters.sentiment_weight : 0
   const chartOption = useMemo(() => ({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['双因子策略', '指数基准'], textStyle: { color: chart.text }, top: 0 },
+    legend: { data: [tr('双因子策略'), tr('指数基准')], textStyle: { color: chart.text }, top: 0 },
     grid: { left: 60, right: 24, top: 48, bottom: 40 },
     xAxis: { type: 'category', boundaryGap: false, data: result?.equity_curve.map((row) => row.date) ?? [], axisLabel: { color: chart.muted }, axisLine: { lineStyle: { color: chart.line } } },
     yAxis: { type: 'value', scale: true, axisLabel: { color: chart.muted }, splitLine: { lineStyle: { color: chart.split } } },
     dataZoom: [{ type: 'inside' }],
-    series: [{ name: '双因子策略', type: 'line', showSymbol: false, smooth: 0.2, data: result?.equity_curve.map((row) => row.equity) ?? [], lineStyle: { width: 2, color: '#37c6e7' }, areaStyle: { color: '#37c6e718' } }, { name: '指数基准', type: 'line', showSymbol: false, data: result?.equity_curve.map((row) => row.benchmark) ?? [], lineStyle: { width: 1.5, color: '#a989ff', type: 'dashed' } }],
+    series: [{ name: tr('双因子策略'), type: 'line', showSymbol: false, smooth: 0.2, data: result?.equity_curve.map((row) => row.equity) ?? [], lineStyle: { width: 2, color: '#37c6e7' }, areaStyle: { color: '#37c6e718' } }, { name: tr('指数基准'), type: 'line', showSymbol: false, data: result?.equity_curve.map((row) => row.benchmark) ?? [], lineStyle: { width: 1.5, color: '#a989ff', type: 'dashed' } }],
   }), [result, chart.line, chart.muted, chart.split, chart.text])
 
   if (error && !config) return <ErrorPanel message={error} />
@@ -88,34 +93,34 @@ export function Strategy() {
   const p = config.parameters
   return (
     <>
-      <PageHeader eyebrow="Strategy laboratory" title="把研究假设变成可配置实验" description="调整因子权重、交易成本与股票池；系统记录每次实验参数与资金曲线，支持科学复现与对比。" actions={<button className="button primary" onClick={() => execute('save')} disabled={!!activeAction}><Save size={16} />{activeAction === 'save' ? '保存中' : '保存配置'}</button>} />
+      <PageHeader eyebrow="Strategy laboratory" title={tr("把研究假设变成可配置实验")} description={tr("调整因子权重、交易成本与股票池；系统记录每次实验参数与资金曲线，支持科学复现与对比。")} actions={<button className="button primary" onClick={() => execute('save')} disabled={!!activeAction}><Save size={16} />{tr(activeAction === 'save' ? '保存中' : '保存配置')}</button>} />
       {(error || message) && <div className={`inline-alert ${error ? '' : 'success'}`}>{error || message}</div>}
       <section className="strategy-layout">
         <div className="strategy-column">
           <article className="panel config-panel">
-            <div className="panel-head"><div><span className="section-kicker">UNIVERSE</span><h2>股票池与样本期</h2></div><span className="source-chip">当前 {watchlist.length} 只</span></div>
-            <label className="field stock-count-field"><span>股票数量（自动补充默认大盘股，1–{MAX_STOCK_COUNT}）</span><input aria-label="股票数量" type="number" min={1} max={MAX_STOCK_COUNT} value={watchlist.length || 1} onChange={(event) => resizeWatchlist(Number(event.target.value))} /></label>
-            <label className="field"><span>股票代码（逗号分隔）</span><textarea value={watchlistText} onChange={(event) => setWatchlistText(event.target.value)} rows={3} /></label>
-            <div className="field-row"><label className="field"><span>回测开始</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label className="field"><span>回测结束</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div>
+            <div className="panel-head"><div><span className="section-kicker">UNIVERSE</span><h2>{tr("股票池与样本期")}</h2></div><span className="source-chip">{tr("当前")} {watchlist.length} {tr("只")}</span></div>
+            <label className="field stock-count-field"><span>{localize({ 'zh-CN': `股票数量（自动补充默认大盘股，1–${MAX_STOCK_COUNT}）`, en: `Number of stocks (auto-fill default large caps, 1–${MAX_STOCK_COUNT})`, ja: `銘柄数（既定の大型株で自動補完、1～${MAX_STOCK_COUNT}）` })}</span><input aria-label={tr("股票数量")} type="number" min={1} max={MAX_STOCK_COUNT} value={watchlist.length || 1} onChange={(event) => resizeWatchlist(Number(event.target.value))} /></label>
+            <label className="field"><span>{tr("股票代码（逗号分隔）")}</span><textarea value={watchlistText} onChange={(event) => setWatchlistText(event.target.value)} rows={3} /></label>
+            <div className="field-row"><label className="field"><span>{tr("回测开始")}</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label className="field"><span>{tr("回测结束")}</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div>
           </article>
           <article className="panel config-panel">
-            <div className="panel-head"><div><span className="section-kicker">FACTOR MIX</span><h2>因子权重</h2></div><span className={`weight-total ${Math.abs(weightTotal - 1) < 0.001 ? 'valid' : 'invalid'}`}>合计 {(weightTotal * 100).toFixed(0)}%</span></div>
-            <RangeField label="行情动量" value={p.momentum_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('momentum_weight', value)} color="cyan" />
-            <RangeField label="财务质量" value={p.quality_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('quality_weight', value)} color="violet" />
-            <RangeField label="舆情情绪" value={p.sentiment_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('sentiment_weight', value)} color="green" />
-            <p className="small-note">排名使用三因子；历史回测为避免财务披露时点泄漏，仅将行情与舆情权重重新归一化后使用。</p>
+            <div className="panel-head"><div><span className="section-kicker">FACTOR MIX</span><h2>{tr("因子权重")}</h2></div><span className={`weight-total ${Math.abs(weightTotal - 1) < 0.001 ? 'valid' : 'invalid'}`}>{tr("合计")} {(weightTotal * 100).toFixed(0)}%</span></div>
+            <RangeField label={tr("行情动量")} value={p.momentum_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('momentum_weight', value)} color="cyan" />
+            <RangeField label={tr("财务质量")} value={p.quality_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('quality_weight', value)} color="violet" />
+            <RangeField label={tr("舆情情绪")} value={p.sentiment_weight} min={0} max={1} step={0.05} onChange={(value) => updateParameter('sentiment_weight', value)} color="green" />
+            <p className="small-note">{tr("排名使用三因子；历史回测为避免财务披露时点泄漏，仅将行情与舆情权重重新归一化后使用。")}</p>
           </article>
           <article className="panel config-panel">
-            <div className="panel-head"><div><span className="section-kicker">EXECUTION</span><h2>信号与成本</h2></div><FlaskConical size={21} /></div>
-            <div className="compact-grid"><NumberField label="动量窗口（交易日）" value={p.momentum_window} step={1} onChange={(value) => updateParameter('momentum_window', value)} /><NumberField label="舆情回看（日）" value={p.sentiment_lookback_days} step={1} onChange={(value) => updateParameter('sentiment_lookback_days', value)} /><NumberField label="持仓数量" value={p.top_n} step={1} onChange={(value) => updateParameter('top_n', value)} /><NumberField label="舆情门槛" value={p.sentiment_threshold} step={0.05} onChange={(value) => updateParameter('sentiment_threshold', value)} /><NumberField label="手续费率" value={p.fee_rate} step={0.0001} onChange={(value) => updateParameter('fee_rate', value)} /><NumberField label="滑点率" value={p.slippage_rate} step={0.0001} onChange={(value) => updateParameter('slippage_rate', value)} /><label className="field"><span>指数基准</span><select value={p.benchmark_symbol ?? '000300'} onChange={(event) => updateParameter('benchmark_symbol', event.target.value)}><option value="000300">000300 · 沪深300</option><option value="000905">000905 · 中证500</option><option value="000852">000852 · 中证1000</option></select></label></div>
+            <div className="panel-head"><div><span className="section-kicker">EXECUTION</span><h2>{tr("信号与成本")}</h2></div><FlaskConical size={21} /></div>
+            <div className="compact-grid"><NumberField label={tr("动量窗口（交易日）")} value={p.momentum_window} step={1} onChange={(value) => updateParameter('momentum_window', value)} /><NumberField label={tr("舆情回看（日）")} value={p.sentiment_lookback_days} step={1} onChange={(value) => updateParameter('sentiment_lookback_days', value)} /><NumberField label={tr("持仓数量")} value={p.top_n} step={1} onChange={(value) => updateParameter('top_n', value)} /><NumberField label={tr("舆情门槛")} value={p.sentiment_threshold} step={0.05} onChange={(value) => updateParameter('sentiment_threshold', value)} /><NumberField label={tr("手续费率")} value={p.fee_rate} step={0.0001} onChange={(value) => updateParameter('fee_rate', value)} /><NumberField label={tr("滑点率")} value={p.slippage_rate} step={0.0001} onChange={(value) => updateParameter('slippage_rate', value)} /><label className="field"><span>{tr("指数基准")}</span><select value={p.benchmark_symbol ?? '000300'} onChange={(event) => updateParameter('benchmark_symbol', event.target.value)}><option value="000300">{tr("000300 · 沪深300")}</option><option value="000905">{tr("000905 · 中证500")}</option><option value="000852">{tr("000852 · 中证1000")}</option></select></label></div>
           </article>
         </div>
         <aside className="strategy-column">
-          <article className="panel workflow-panel"><div className="panel-head"><div><span className="section-kicker">RESEARCH PIPELINE</span><h2>分步运行</h2></div><Sparkles size={21} /></div><p>真实采集可能受源站限流影响。建议先同步少量股票，再逐步扩大股票池。</p><div className="workflow-actions"><ActionButton icon={<DatabaseZap />} label="1. 同步研究数据" detail="Tushare 行情财务 + 公开新闻公告" active={activeAction === 'sync'} disabled={!!activeAction} onClick={() => execute('sync')} /><ActionButton icon={<Brain />} label="2. 大模型情绪分析" detail="结构化标签、分数和理由" active={activeAction === 'analyze'} disabled={!!activeAction} onClick={() => execute('analyze')} /><ActionButton icon={<Sparkles />} label="3. 生成 AI 评分" detail="动量 + 质量 + 情绪" active={activeAction === 'score'} disabled={!!activeAction} onClick={() => execute('score')} /><ActionButton icon={<Play />} label="4. 运行历史回测" detail="延迟信号 + 手续费 + 滑点" active={activeAction === 'backtest'} disabled={!!activeAction} onClick={() => execute('backtest')} accent /></div></article>
-          <article className="panel guardrail-panel"><span>研究护栏</span><ul><li>信号在下一交易日才生效</li><li>新闻只在发布时间之后进入因子</li><li>回测扣除双边换仓成本</li><li>系统不包含券商与真实下单接口</li></ul></article>
+          <article className="panel workflow-panel"><div className="panel-head"><div><span className="section-kicker">RESEARCH PIPELINE</span><h2>{tr("分步运行")}</h2></div><Sparkles size={21} /></div><p>{tr("真实采集可能受源站限流影响。建议先同步少量股票，再逐步扩大股票池。")}</p><div className="workflow-actions"><ActionButton icon={<DatabaseZap />} label={tr("1. 同步研究数据")} detail={tr("Tushare 行情财务 + 公开新闻公告")} active={activeAction === 'sync'} disabled={!!activeAction} onClick={() => execute('sync')} /><ActionButton icon={<Brain />} label={tr("2. 大模型情绪分析")} detail={tr("结构化标签、分数和理由")} active={activeAction === 'analyze'} disabled={!!activeAction} onClick={() => execute('analyze')} /><ActionButton icon={<Sparkles />} label={tr("3. 生成 AI 评分")} detail={tr("动量 + 质量 + 情绪")} active={activeAction === 'score'} disabled={!!activeAction} onClick={() => execute('score')} /><ActionButton icon={<Play />} label={tr("4. 运行历史回测")} detail={tr("延迟信号 + 手续费 + 滑点")} active={activeAction === 'backtest'} disabled={!!activeAction} onClick={() => execute('backtest')} accent /></div></article>
+          <article className="panel guardrail-panel"><span>{tr("研究护栏")}</span><ul><li>{tr("信号在下一交易日才生效")}</li><li>{tr("新闻只在发布时间之后进入因子")}</li><li>{tr("回测扣除双边换仓成本")}</li><li>{tr("系统不包含券商与真实下单接口")}</li></ul></article>
         </aside>
       </section>
-      {result && <section className="panel result-panel"><div className="panel-head"><div><span className="section-kicker">BACKTEST RESULT #{result.id}</span><h2>策略资金曲线</h2></div><span className="source-chip">{result.start_date} → {result.end_date}</span></div><div className="result-metrics">{[['累计收益', formatPercent(result.metrics.total_return)], ['年化收益', formatPercent(result.metrics.annualized_return)], ['最大回撤', formatPercent(result.metrics.max_drawdown)], ['夏普比率', formatNumber(result.metrics.sharpe_ratio)], ['换手率', formatNumber(result.metrics.turnover)], ['交易日', formatNumber(result.metrics.bars, 0)]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div><ReactECharts option={chartOption} style={{ height: 390 }} /></section>}
+      {result && <section className="panel result-panel"><div className="panel-head"><div><span className="section-kicker">BACKTEST RESULT #{result.id}</span><h2>{tr("策略资金曲线")}</h2></div><span className="source-chip">{result.start_date} → {result.end_date}</span></div><div className="result-metrics">{[['累计收益', formatPercent(result.metrics.total_return)], ['年化收益', formatPercent(result.metrics.annualized_return)], ['最大回撤', formatPercent(result.metrics.max_drawdown)], ['夏普比率', formatNumber(result.metrics.sharpe_ratio)], ['换手率', formatNumber(result.metrics.turnover)], ['交易日', formatNumber(result.metrics.bars, 0)]].map(([label, value]) => <div key={label}><span>{tr(label)}</span><strong>{value}</strong></div>)}</div><ReactECharts option={chartOption} style={{ height: 390 }} /></section>}
     </>
   )
 }
@@ -129,7 +134,7 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
 }
 
 function ActionButton({ icon, label, detail, active, disabled, onClick, accent = false }: { icon: React.ReactNode; label: string; detail: string; active: boolean; disabled: boolean; onClick: () => void; accent?: boolean }) {
-  return <button className={`workflow-button ${accent ? 'accent' : ''}`} onClick={onClick} disabled={disabled}><span className={active ? 'spin' : ''}>{icon}</span><div><strong>{active ? '正在执行…' : label}</strong><small>{detail}</small></div></button>
+  return <button className={`workflow-button ${accent ? 'accent' : ''}`} onClick={onClick} disabled={disabled}><span className={active ? 'spin' : ''}>{icon}</span><div><strong>{active ? tr('正在执行…') : label}</strong><small>{detail}</small></div></button>
 }
 
 function yearAgo() {

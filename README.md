@@ -1,6 +1,6 @@
 # AI Quant Research Cockpit
 
-**English | [简体中文](./README_CN.md)**
+**English | [简体中文](./README_CN.md) | [日本語](./README_JA.md)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](./LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
@@ -43,6 +43,7 @@ An end-to-end A-share research project for quantitative-finance beginners. It us
 - **Strategy laboratory:** visually configure the universe, factor weights, windows, thresholds, number of holdings, fees, and slippage.
 - **Dynamic universe:** start from 15 cross-industry large caps, resize automatically from 1 to 30 stocks, or edit ticker symbols directly.
 - **Light and dark themes:** switch themes from the header; the choice persists in the browser and ECharts follows the active palette.
+- **Localized interface:** switch every application screen between English, Simplified Chinese, and Japanese. A saved cookie takes priority, otherwise the browser language is used when supported, with English as the default.
 - **Two-factor backtest:** combine sentiment and market factors, enforce a one-bar signal delay, and report equity, benchmark, return, drawdown, Sharpe ratio, and turnover.
 - **Trading calendar and index benchmark:** store the A-share trading calendar and use real indices such as CSI 300 instead of presenting equal-weight universe returns as the default benchmark.
 - **Point-in-time fundamentals:** keep the reporting period and actual announcement time separately, so a score can only access data that was public on that scoring date.
@@ -398,7 +399,7 @@ Set-Location frontend
 npm run test:e2e
 ```
 
-Playwright verifies the light theme, dynamic page titles, all 11 chapters and 33 concept pages, source downloads, sentiment-label colors, and automation configuration.
+Playwright verifies English/Chinese/Japanese detection and cookie persistence, desktop/mobile layout fit, the light theme, dynamic page titles, all 11 chapters and 33 concept pages, source downloads, sentiment-label colors, and automation configuration.
 
 ## Repository layout
 
@@ -416,6 +417,7 @@ ai-quantitative-trading/
 │   └── tests/
 ├── frontend/src/
 │   ├── components/
+│   ├── i18n/                    # UI and learning-content translations
 │   └── pages/                   # Includes validation, tasks, and data governance
 ├── learning/                    # Guide, capstone template, datasets, and runnable labs
 ├── docs/images/                 # README screenshots captured from the live deployment
@@ -423,7 +425,8 @@ ai-quantitative-trading/
 ├── scripts/                     # Local development, checks, deployment, and operations
 ├── .env.example
 ├── README.md                    # English documentation
-└── README_CN.md                 # 简体中文说明
+├── README_CN.md                 # 简体中文说明
+└── README_JA.md                 # 日本語ドキュメント
 ```
 
 ## Known limitations
