@@ -19,6 +19,8 @@ from app.models import (
 from app.schemas import StrategyParameters
 from app.services.news_dedup import is_duplicate_news
 
+SENTIMENT_HALF_LIFE_DAYS = 7.0
+
 
 def _bounded_score(value: float, scale: float = 1.0) -> float:
     return round(50 + 50 * math.tanh(value * scale), 2)
@@ -91,19 +93,29 @@ def quality_component(
 
 
 def sentiment_component(
-    events: list[tuple[float, float, datetime]], as_of: date
+    events: list[tuple[float, float, datetime]],
+    as_of: date,
+    lookback_days: int = 7,
+    half_life_days: float = SENTIMENT_HALF_LIFE_DAYS,
 ) -> tuple[float, int]:
-    if not events:
+    if not events or lookback_days < 1 or half_life_days <= 0:
         return 50.0, 0
     weighted = 0.0
     weights = 0.0
+    included = 0
     as_of_dt = datetime.combine(as_of, datetime.max.time())
     for score, confidence, published_at in events:
         age_days = max(0.0, (as_of_dt - published_at).total_seconds() / 86400)
-        weight = max(0.05, confidence) * math.exp(-age_days / 7)
+        if age_days > lookback_days:
+            continue
+        weight = max(0.05, min(1.0, confidence)) * 0.5 ** (age_days / half_life_days)
         weighted += score * weight
         weights += weight
-    return _bounded_score(weighted / weights if weights else 0.0, 1.3), len(events)
+        included += 1
+    # A neutral prior prevents one low-confidence or nearly expired event from
+    # producing an artificially strong directional score.
+    aggregate = weighted / max(1.0, weights) if weights else 0.0
+    return _bounded_score(aggregate, 1.3), included
 
 
 def deduplicate_sentiment_events(
@@ -143,7 +155,10 @@ def calculate_scores(
     parameters: StrategyParameters,
 ) -> list[FactorScore]:
     results: list[FactorScore] = []
-    start_news = datetime.combine(as_of - timedelta(days=30), datetime.min.time())
+    sentiment_lookback_days = parameters.sentiment_lookback_days
+    start_news = datetime.combine(
+        as_of - timedelta(days=sentiment_lookback_days), datetime.min.time()
+    )
     for symbol in symbols:
         price_rows = list(
             db.scalars(
@@ -193,7 +208,11 @@ def calculate_scores(
             )
         ).all()
         unique_events = deduplicate_sentiment_events(list(event_rows))
-        sentiment, event_count = sentiment_component(unique_events, as_of)
+        sentiment, event_count = sentiment_component(
+            unique_events,
+            as_of,
+            lookback_days=sentiment_lookback_days,
+        )
 
         total = round(
             momentum * parameters.momentum_weight
@@ -231,6 +250,12 @@ def calculate_scores(
                 "financial_source": financials[0].source if financials else None,
             },
             "sentiment_event_count": event_count,
+            "sentiment_method": {
+                "lookback_days": sentiment_lookback_days,
+                "half_life_days": SENTIMENT_HALF_LIFE_DAYS,
+                "weighting": "confidence_x_exponential_decay",
+                "stale_policy": "excluded_after_lookback",
+            },
             "warning": (
                 "行情存在异常跳变，动量已回退为中性；请先处理数据质量告警。"
                 if momentum_detail["status"] == "blocked_by_price_anomaly"

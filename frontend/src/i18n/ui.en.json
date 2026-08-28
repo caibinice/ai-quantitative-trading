@@ -567,5 +567,11 @@
   "Tushare Pro 新闻通讯": "Tushare Pro news feed",
   "useTheme 必须在 ThemeProvider 内使用": "useTheme must be used within ThemeProvider",
   "Walk-forward 验证": "Walk-forward validation",
-  "Walk-forward 样本外验证": "Walk-forward out-of-sample validation"
+  "Walk-forward 样本外验证": "Walk-forward out-of-sample validation",
+  "近 7 日股票池情绪": "7-day stock-universe sentiment",
+  "仅统计当前筛选中近 7 日事件；按模型置信度和 7 日半衰期指数加权，过期事件不计入，证据不足时回归中性。": "Only events from the last 7 days in the current filter are included. Scores are exponentially weighted by model confidence with a 7-day half-life; older events are excluded and sparse evidence shrinks toward neutral.",
+  "有效样本": "Effective observations",
+  "时间窗口": "Lookback",
+  "半衰期": "Half-life",
+  "近 7 日情绪分": "7-day sentiment score"
 }

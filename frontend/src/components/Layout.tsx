@@ -4,6 +4,7 @@ import {
   BrainCircuit,
   CandlestickChart,
   CalendarCheck2,
+  ChevronDown,
   FlaskConical,
   Globe2,
   GraduationCap,
@@ -103,6 +104,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+              <ChevronDown className="language-chevron" size={13} aria-hidden="true" />
             </label>
             <button className="theme-toggle" onClick={toggleTheme} aria-label={tr(theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式')} title={tr(theme === 'dark' ? '切换到明亮模式' : '切换到暗黑模式')}>
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}

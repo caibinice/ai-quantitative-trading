@@ -31,7 +31,7 @@ def test_momentum_blocks_extreme_price_contamination() -> None:
     assert detail["anomaly_count"] >= 2
 
 
-def test_recent_sentiment_has_more_weight() -> None:
+def test_sentiment_excludes_events_outside_the_recent_window() -> None:
     as_of = date(2025, 6, 30)
     events = [
         (-1.0, 1.0, datetime.combine(as_of - timedelta(days=25), datetime.min.time())),
@@ -39,8 +39,33 @@ def test_recent_sentiment_has_more_weight() -> None:
     ]
     score, count = sentiment_component(events, as_of)
 
-    assert count == 2
+    assert count == 1
     assert score > 50
+
+
+def test_recent_negative_events_override_legacy_positive_history() -> None:
+    as_of = date(2026, 8, 28)
+    events = [
+        (0.9, 0.9, datetime.combine(as_of - timedelta(days=20), datetime.min.time())),
+        (0.7, 0.8, datetime.combine(as_of - timedelta(days=12), datetime.min.time())),
+        (-0.6, 0.7, datetime.combine(as_of - timedelta(days=1), datetime.min.time())),
+        (-0.5, 0.8, datetime.combine(as_of, datetime.min.time())),
+    ]
+
+    score, count = sentiment_component(events, as_of, lookback_days=7)
+
+    assert count == 2
+    assert score < 50
+
+
+def test_sparse_sentiment_evidence_shrinks_toward_neutral() -> None:
+    as_of = date(2026, 8, 28)
+    events = [(1.0, 0.05, datetime.combine(as_of, datetime.max.time()))]
+
+    score, count = sentiment_component(events, as_of)
+
+    assert count == 1
+    assert 50 < score < 55
 
 
 def test_same_stock_news_is_counted_once_in_sentiment_factor() -> None:

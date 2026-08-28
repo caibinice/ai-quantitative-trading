@@ -8,6 +8,7 @@ import { ErrorPanel, Loading } from '../components/StatePanel'
 import { chartPalette, useTheme } from '../theme-context'
 import type { NewsItem, SentimentSource, Stock } from '../types'
 import { localize, tr } from '../i18n'
+import { aggregateRecentSentiment, SENTIMENT_HALF_LIFE_DAYS, SENTIMENT_LOOKBACK_DAYS } from '../sentiment'
 
 export function Sentiment() {
   const { theme } = useTheme()
@@ -44,14 +45,11 @@ export function Sentiment() {
     finally { setAnalyzing(false) }
   }
 
-  const counts = useMemo(() => items.reduce<Record<string, number>>((result, item) => {
-    result[item.label] = (result[item.label] ?? 0) + 1
-    return result
-  }, {}), [items])
-  const analyzed = items.filter((item) => item.score !== null)
-  const average = analyzed.length ? analyzed.reduce((sum, item) => sum + (item.score ?? 0), 0) / analyzed.length : 0
+  const recentMood = useMemo(() => aggregateRecentSentiment(items), [items])
+  const counts = recentMood.counts
+  const average = recentMood.score
   const gaugeOption = {
-    series: [{ type: 'gauge', startAngle: 210, endAngle: -30, min: -1, max: 1, splitNumber: 4, radius: '95%', center: ['50%', '58%'], progress: { show: true, width: 12, itemStyle: { color: average >= 0 ? '#32d6a0' : '#ff6b78' } }, axisLine: { lineStyle: { width: 12, color: [[1, chart.track]] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { color: chart.muted, distance: -38, fontSize: 10 }, pointer: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, '10%'], formatter: (value: number) => value.toFixed(2), color: chart.strong, fontSize: 30, fontWeight: 700 }, title: { offsetCenter: [0, '42%'], color: chart.muted, fontSize: 12 }, data: [{ value: average, name: tr('平均情绪分') }] }],
+    series: [{ type: 'gauge', startAngle: 210, endAngle: -30, min: -1, max: 1, splitNumber: 4, radius: '95%', center: ['50%', '58%'], progress: { show: true, width: 12, itemStyle: { color: average >= 0 ? '#32d6a0' : '#ff6b78' } }, axisLine: { lineStyle: { width: 12, color: [[1, chart.track]] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { color: chart.muted, distance: -38, fontSize: 10 }, pointer: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, '10%'], formatter: (value: number) => value.toFixed(2), color: chart.strong, fontSize: 30, fontWeight: 700 }, title: { offsetCenter: [0, '42%'], color: chart.muted, fontSize: 12 }, data: [{ value: average, name: tr('近 7 日情绪分') }] }],
   }
 
   if (error && !items.length) return <ErrorPanel message={error} />
@@ -82,7 +80,7 @@ export function Sentiment() {
         </div>
       </section>
       <section className="sentiment-overview">
-        <article className="panel sentiment-gauge"><div><span className="section-kicker">MARKET MOOD</span><h2>{tr("当前股票池情绪")}</h2><p>{tr("统计基于当前筛选列表，不等同于全市场情绪。")}</p></div><ReactECharts key={theme} option={gaugeOption} style={{ height: 210, width: 260 }} /></article>
+        <article className="panel sentiment-gauge" aria-label={`${tr('近 7 日情绪分')} ${average.toFixed(2)}`}><div><span className="section-kicker">MARKET MOOD · {SENTIMENT_LOOKBACK_DAYS}D</span><h2>{tr("近 7 日股票池情绪")}</h2><p>{tr("仅统计当前筛选中近 7 日事件；按模型置信度和 7 日半衰期指数加权，过期事件不计入，证据不足时回归中性。")}</p><small className="sentiment-method-note">{tr("有效样本")} {recentMood.analyzedCount} · {tr("时间窗口")} {SENTIMENT_LOOKBACK_DAYS} {tr("天")} · {tr("半衰期")} {SENTIMENT_HALF_LIFE_DAYS} {tr("天")}</small></div><ReactECharts key={theme} option={gaugeOption} style={{ height: 210, width: 260 }} /></article>
         <article className="panel mood-stats"><div className="mood-cell positive"><span>{tr("利好事件")}</span><strong>{counts['利好'] ?? 0}</strong><small>{tr("模型判断偏正向")}</small></div><div className="mood-cell neutral"><span>{tr("中性事件")}</span><strong>{counts['中性'] ?? 0}</strong><small>{tr("影响暂不明确")}</small></div><div className="mood-cell negative"><span>{tr("利空事件")}</span><strong>{counts['利空'] ?? 0}</strong><small>{tr("模型判断偏负向")}</small></div><div className="mood-cell pending"><span>{tr("待分析")}</span><strong>{counts['待分析'] ?? 0}</strong><small>{tr("等待模型流水线")}</small></div></article>
       </section>
       <section className="panel news-panel">

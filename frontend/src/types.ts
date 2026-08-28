@@ -47,6 +47,12 @@ export interface RankingExplanation {
     financial_source?: string | null
   }
   sentiment_event_count?: number
+  sentiment_method?: {
+    lookback_days?: number
+    half_life_days?: number
+    weighting?: string
+    stale_policy?: string
+  }
   warning?: string
 }
 
